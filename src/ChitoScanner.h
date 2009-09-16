@@ -22,11 +22,11 @@ along with SimQuant.  If not, see <http://www.gnu.org/licenses/>.
 #include <ptb/ScanIterator.h>
 
 
-#define HYDROGEN 1.007947
-#define WATER 18.01057
-#define NEUTRON 1.002
-#define MASS_D 179.172
-#define MASS_A 221.210
+#define MASS_HYDROGEN 1.007947
+#define MASS_WATER 18.01057
+#define MASS_NEUTRON 1.002
+#define MASS_D 161.0689
+#define MASS_A 203.0794
 
 
 class k_ChitoScanner: public k_ScanIterator
@@ -50,4 +50,5 @@ protected:
 	double md_MinSnr;
 	double md_MassAccuracy;
 	QString ms_CurrentSpot;
+	QMap<double, QString> mk_Targets;
 };

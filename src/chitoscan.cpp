@@ -28,12 +28,12 @@ void printUsageAndExit()
 	printf("Usage: chitoscan [options] [spectra files]\n");
 	printf("Spectra files may be mzData, mzXML or mzML, optionally compressed (.gz|.bz2|.zip).\n");
 	printf("Options:\n");
-	printf("  --maxIsotopeCount [int] (default: 3)\n");
-	printf("  --minCharge [int] (default: 2)\n");
+	printf("  --maxDP [int] (default: 10)\n");
+	printf("  --minCharge [int] (default: 1)\n");
 	printf("  --maxCharge [int] (default: 3)\n");
+	printf("  --maxIsotopeCount [int] (default: 3)\n");
 	printf("  --minSnr [float] (default: 2.0)\n");
 	printf("  --massAccuracy (ppm) [float] (default: 5.0)\n");
-	printf("      This mass accuracy is used to check for the presence of peaks.\n");
 	exit(1);
 }
 
@@ -59,11 +59,70 @@ int main(int ai_ArgumentCount, char** ac_Arguments__)
 		lk_Arguments << ac_Arguments__[i];
 		
 	r_ScanType::Enumeration le_ScanType = r_ScanType::All;
+	int li_MaxDP = 10;
 	int li_MaxIsotopeCount = 3;
 	int li_MinCharge = 1;
 	int li_MaxCharge = 3;
 	double ld_MinSnr = 2.0;
 	double ld_MassAccuracy = 5.0;
+	
+	if (lk_Arguments.size() == 1 && !QFile::exists(lk_Arguments.first()))
+	{
+		QMap<double, QString> lk_Targets;
+		for (int li_DP = 1; li_DP < li_MaxDP; ++li_DP)
+		{
+			for (int li_DA = 0; li_DA <= li_DP; ++li_DA)
+			{
+				for (int li_Charge = li_MinCharge; li_Charge <= li_MaxCharge; ++li_Charge)
+				{
+					for (int li_Isotope = 0; li_Isotope < li_MaxIsotopeCount; ++li_Isotope)
+					{
+						int li_A = li_DA;
+						int li_D = li_DP - li_DA;
+						double ld_Mz = (MASS_A * li_A + MASS_D * li_D + MASS_WATER + MASS_HYDROGEN * li_Charge + MASS_NEUTRON * li_Isotope) / li_Charge;
+						lk_Targets[ld_Mz] = QString("A%1D%2+%3 (%4+)").arg(li_A).arg(li_D).arg(li_Isotope).arg(li_Charge);
+					}
+				}
+			}
+		}
+		double ld_QueryMz = lk_Arguments.first().toFloat();
+		double ld_MinError = 1e20;
+		QMap<double, QString>::const_iterator lk_BestIter;
+		QMap<double, QString>::const_iterator lk_Iter = lk_Targets.constBegin();
+		for (; lk_Iter != lk_Targets.constEnd(); ++lk_Iter)
+		{
+			double ld_Mz = lk_Iter.key();
+			double ld_Error = fabs(ld_Mz - ld_QueryMz) / ld_Mz * 1000000.0;
+			if (ld_Error < ld_MinError)
+			{
+				ld_MinError = ld_Error;
+				lk_BestIter = lk_Iter;
+			}
+		}
+		while (lk_BestIter != lk_Targets.constBegin())
+		{
+			--lk_BestIter;
+			double ld_Mz = lk_BestIter.key();
+			double ld_Error = fabs(ld_Mz - ld_QueryMz) / ld_Mz * 1000000.0;
+			if (ld_Error > 50.0)
+				break;
+		}
+		bool lb_BreakNext = false;
+		while (true)
+		{
+			double ld_Mz = lk_BestIter.key();
+			double ld_Error = fabs(ld_Mz - ld_QueryMz) / ld_Mz * 1000000.0;
+			printf("%9.4f %s (%1.2f ppm)\n", lk_BestIter.key(), lk_BestIter.value().toStdString().c_str(), ld_Error);
+			if (lb_BreakNext)
+				break;
+			++lk_BestIter;
+			ld_Mz = lk_BestIter.key();
+			ld_Error = fabs(ld_Mz - ld_QueryMz) / ld_Mz * 1000000.0;
+			if (ld_Error > 50.0)
+				lb_BreakNext = true;
+		}
+		exit(0);
+	}
 	
 	QStringList lk_SpectraFiles;
 	foreach (QString ls_Path, lk_Arguments)

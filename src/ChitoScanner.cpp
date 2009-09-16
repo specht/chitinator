@@ -56,6 +56,23 @@ k_ChitoScanner::k_ChitoScanner(r_ScanType::Enumeration ae_ScanType,
 		printf("Error: mass accuracy must not be less than zero.\n");
 		exit(1);
 	}
+	
+	for (int li_DP = 1; li_DP < 10; ++li_DP)
+	{
+		for (int li_DA = 0; li_DA <= li_DP; ++li_DA)
+		{
+			for (int li_Charge = mi_MinCharge; li_Charge <= mi_MaxCharge; ++li_Charge)
+			{
+				for (int li_Isotope = 0; li_Isotope < mi_MaxIsotopeCount; ++li_Isotope)
+				{
+					int li_A = li_DA;
+					int li_D = li_DP - li_DA;
+					double ld_Mz = (MASS_A * li_A + MASS_D * li_D + MASS_WATER + MASS_HYDROGEN * li_Charge + MASS_NEUTRON * li_Isotope) / li_Charge;
+					mk_Targets[ld_Mz] = QString("A%1D%2+%3 (%4+)").arg(li_A).arg(li_D).arg(li_Isotope).arg(li_Charge);
+				}
+			}
+		}
+	}
 }
 
 
@@ -113,7 +130,22 @@ void k_ChitoScanner::handleScan(r_Scan& ar_Scan)
 	
 	printf("MS%d: %4d ", ar_Scan.mi_MsLevel, lk_AllPeaks.size());
 	foreach (r_Peak lr_Peak, lk_AllPeaks)
+	{
+		double ld_MinError = 1e20;
+		double ld_BestMzMatch = -1.0;
+		foreach (double ld_Mz, mk_Targets.keys())
+		{
+			double ld_Error = fabs(ld_Mz - lr_Peak.md_PeakMz) / ld_Mz * 1000000.0;
+			if (ld_Error < ld_MinError)
+			{
+				ld_MinError = ld_Error;
+				ld_BestMzMatch = ld_Mz;
+			}
+		}
 		printf("%7.2f ", lr_Peak.md_PeakMz);
+/*		if (ld_BestMzMatch >= 0.0 && ld_MinError <= 30.0)
+			printf("(%s / %1.2f ppm) ", mk_Targets[ld_BestMzMatch].toStdString().c_str(), ld_MinError);*/
+	}
 	printf("\n");
 }
 
