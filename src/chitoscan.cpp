@@ -57,6 +57,9 @@ int main(int ai_ArgumentCount, char** ac_Arguments__)
 	QStringList lk_Arguments;
 	for (int i = 1; i < ai_ArgumentCount; ++i)
 		lk_Arguments << ac_Arguments__[i];
+	
+	if (lk_Arguments.empty())
+		printUsageAndExit();
 		
 	r_ScanType::Enumeration le_ScanType = r_ScanType::All;
 	int li_MaxDP = 10;
@@ -65,6 +68,57 @@ int main(int ai_ArgumentCount, char** ac_Arguments__)
 	int li_MaxCharge = 3;
 	double ld_MinSnr = 2.0;
 	double ld_MassAccuracy = 5.0;
+	
+	// consume options
+	int li_Index;
+	
+	li_Index = lk_Arguments.indexOf("--maxDP");
+	if (li_Index > -1)
+	{
+		li_MaxDP = QVariant(lk_Arguments[li_Index + 1]).toInt();
+		lk_Arguments.removeAt(li_Index);
+		lk_Arguments.removeAt(li_Index);
+	}
+	
+	li_Index = lk_Arguments.indexOf("--maxIsotopeCount");
+	if (li_Index > -1)
+	{
+		li_MaxIsotopeCount = QVariant(lk_Arguments[li_Index + 1]).toInt();
+		lk_Arguments.removeAt(li_Index);
+		lk_Arguments.removeAt(li_Index);
+	}
+	
+	li_Index = lk_Arguments.indexOf("--minCharge");
+	if (li_Index > -1)
+	{
+		li_MinCharge = QVariant(lk_Arguments[li_Index + 1]).toInt();
+		lk_Arguments.removeAt(li_Index);
+		lk_Arguments.removeAt(li_Index);
+	}
+	
+	li_Index = lk_Arguments.indexOf("--maxCharge");
+	if (li_Index > -1)
+	{
+		li_MaxCharge = QVariant(lk_Arguments[li_Index + 1]).toInt();
+		lk_Arguments.removeAt(li_Index);
+		lk_Arguments.removeAt(li_Index);
+	}
+	
+	li_Index = lk_Arguments.indexOf("--minSnr");
+	if (li_Index > -1)
+	{
+		ld_MinSnr = QVariant(lk_Arguments[li_Index + 1]).toDouble();
+		lk_Arguments.removeAt(li_Index);
+		lk_Arguments.removeAt(li_Index);
+	}
+	
+	li_Index = lk_Arguments.indexOf("--massAccuracy");
+	if (li_Index > -1)
+	{
+		ld_MassAccuracy = QVariant(lk_Arguments[li_Index + 1]).toDouble();
+		lk_Arguments.removeAt(li_Index);
+		lk_Arguments.removeAt(li_Index);
+	}
 	
 	if (lk_Arguments.size() == 1 && !QFile::exists(lk_Arguments.first()))
 	{
@@ -104,7 +158,7 @@ int main(int ai_ArgumentCount, char** ac_Arguments__)
 			--lk_BestIter;
 			double ld_Mz = lk_BestIter.key();
 			double ld_Error = fabs(ld_Mz - ld_QueryMz) / ld_Mz * 1000000.0;
-			if (ld_Error > 50.0)
+			if (ld_Error > ld_MassAccuracy)
 				break;
 		}
 		bool lb_BreakNext = false;
@@ -118,7 +172,7 @@ int main(int ai_ArgumentCount, char** ac_Arguments__)
 			++lk_BestIter;
 			ld_Mz = lk_BestIter.key();
 			ld_Error = fabs(ld_Mz - ld_QueryMz) / ld_Mz * 1000000.0;
-			if (ld_Error > 50.0)
+			if (ld_Error > ld_MassAccuracy)
 				lb_BreakNext = true;
 		}
 		exit(0);
