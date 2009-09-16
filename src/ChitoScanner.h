@@ -32,10 +32,10 @@ along with SimQuant.  If not, see <http://www.gnu.org/licenses/>.
 class k_ChitoScanner: public k_ScanIterator
 {
 public:
-	k_ChitoScanner(r_ScanType::Enumeration ae_ScanType = r_ScanType::All,
-				 QList<tk_IntPair> ak_MsLevels = QList<tk_IntPair>() << tk_IntPair(0, 0x10000),
-				 int ai_MaxIsotopeCount = 3, int ai_MinCharge = 2, int ai_MaxCharge = 3, 
-				 double ad_MinSnr = 2.0, double ad_MassAccuracy = 5.0);
+	k_ChitoScanner(r_ScanType::Enumeration ae_ScanType,
+				 QList<tk_IntPair> ak_MsLevels,
+				 int ai_MaxIsotopeCount, int ai_MinCharge, int ai_MaxCharge, 
+				 double ad_MinSnr, double ad_MassAccuracy);
 	virtual ~k_ChitoScanner();
 	
 	// quantify takes a list of spectra files and a hash of (peptide => protein) entries

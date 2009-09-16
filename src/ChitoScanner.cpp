@@ -92,11 +92,33 @@ void k_ChitoScanner::handleScan(r_Scan& ar_Scan)
 	
 	// find all peaks in this spectrum
 	QList<r_Peak> lk_AllPeaks = k_ScanIterator::findAllPeaks(ar_Scan.mr_Spectrum);
-	printf("Found %d peaks.\n", lk_AllPeaks.size());
+	
+	// filter by SNR
+	QList<r_Peak> lk_TempPeaks;
+	lk_TempPeaks.clear();
+	foreach (r_Peak lr_Peak, lk_AllPeaks)
+		if (lr_Peak.md_Snr >= md_MinSnr)
+			lk_TempPeaks << lr_Peak;
+	lk_AllPeaks = lk_TempPeaks;
+	
+	// filter out lower 5%
+	double ld_MaxIntensity = 0.0;
+	foreach (r_Peak lr_Peak, lk_AllPeaks)
+		ld_MaxIntensity = std::max<double>(ld_MaxIntensity, lr_Peak.md_PeakIntensity);
+	lk_TempPeaks.clear();
+	foreach (r_Peak lr_Peak, lk_AllPeaks)
+		if (lr_Peak.md_PeakIntensity >= ld_MaxIntensity * 0.05)
+			lk_TempPeaks << lr_Peak;
+	lk_AllPeaks = lk_TempPeaks;
+	
+	printf("MS%d: %4d ", ar_Scan.mi_MsLevel, lk_AllPeaks.size());
+	foreach (r_Peak lr_Peak, lk_AllPeaks)
+		printf("%7.2f ", lr_Peak.md_PeakMz);
+	printf("\n");
 }
 
 
 void k_ChitoScanner::progressFunction(QString as_ScanId, bool)
 {
-	printf("\r%s: scan #%s...", ms_CurrentSpot.toStdString().c_str(), as_ScanId.toStdString().c_str());
+// 	printf("\r%s: scan #%s...", ms_CurrentSpot.toStdString().c_str(), as_ScanId.toStdString().c_str());
 }
