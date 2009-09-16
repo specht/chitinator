@@ -5,6 +5,8 @@ CONFIG += debug_and_release console
 DEPENDPATH += .
 INCLUDEPATH += .
 
+LIBS += -lptb -lbz2 -lquazip
+
 macx {
 	CONFIG -= app_bundle
 	CONFIG += x86
@@ -29,7 +31,7 @@ else {
 
 DESTDIR = ../../
 
-QT = core
+QT = core xml
 
 HEADERS += \
 	../../src/RefPtr.h \
