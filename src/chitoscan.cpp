@@ -33,7 +33,8 @@ void printUsageAndExit()
 	printf("  --maxCharge [int] (default: 3)\n");
 	printf("  --maxIsotopeCount [int] (default: 3)\n");
 	printf("  --minSnr [float] (default: 2.0)\n");
-	printf("  --massAccuracy (ppm) [float] (default: 5.0)\n");
+	printf("  --precursorMassAccuracy (ppm) [float] (default: 5.0)\n");
+	printf("  --productMassAccuracy (ppm) [float] (default: 700.0)\n");
 	exit(1);
 }
 
@@ -67,7 +68,8 @@ int main(int ai_ArgumentCount, char** ac_Arguments__)
 	int li_MinCharge = 1;
 	int li_MaxCharge = 3;
 	double ld_MinSnr = 2.0;
-	double ld_MassAccuracy = 5.0;
+	double ld_PrecursorMassAccuracy = 5.0;
+	double ld_ProductMassAccuracy = 700.0;
 	
 	// consume options
 	int li_Index;
@@ -112,78 +114,30 @@ int main(int ai_ArgumentCount, char** ac_Arguments__)
 		lk_Arguments.removeAt(li_Index);
 	}
 	
-	li_Index = lk_Arguments.indexOf("--massAccuracy");
+	li_Index = lk_Arguments.indexOf("--precursorMassAccuracy");
 	if (li_Index > -1)
 	{
-		ld_MassAccuracy = QVariant(lk_Arguments[li_Index + 1]).toDouble();
+		ld_PrecursorMassAccuracy = QVariant(lk_Arguments[li_Index + 1]).toDouble();
 		lk_Arguments.removeAt(li_Index);
 		lk_Arguments.removeAt(li_Index);
 	}
 	
-	if (lk_Arguments.size() == 1 && !QFile::exists(lk_Arguments.first()))
+	li_Index = lk_Arguments.indexOf("--productMassAccuracy");
+	if (li_Index > -1)
 	{
-		QMap<double, QString> lk_Targets;
-		for (int li_DP = 1; li_DP < li_MaxDP; ++li_DP)
-		{
-			for (int li_DA = 0; li_DA <= li_DP; ++li_DA)
-			{
-				for (int li_Charge = li_MinCharge; li_Charge <= li_MaxCharge; ++li_Charge)
-				{
-					for (int li_Isotope = 0; li_Isotope < li_MaxIsotopeCount; ++li_Isotope)
-					{
-						int li_A = li_DA;
-						int li_D = li_DP - li_DA;
-						double ld_Mz = (MASS_A * li_A + MASS_D * li_D + MASS_WATER + MASS_HYDROGEN * li_Charge + MASS_NEUTRON * li_Isotope) / li_Charge;
-						lk_Targets[ld_Mz] = QString("A%1D%2+%3 (%4+)").arg(li_A).arg(li_D).arg(li_Isotope).arg(li_Charge);
-					}
-				}
-			}
-		}
-		double ld_QueryMz = lk_Arguments.first().toFloat();
-		double ld_MinError = 1e20;
-		QMap<double, QString>::const_iterator lk_BestIter;
-		QMap<double, QString>::const_iterator lk_Iter = lk_Targets.constBegin();
-		for (; lk_Iter != lk_Targets.constEnd(); ++lk_Iter)
-		{
-			double ld_Mz = lk_Iter.key();
-			double ld_Error = fabs(ld_Mz - ld_QueryMz) / ld_Mz * 1000000.0;
-			if (ld_Error < ld_MinError)
-			{
-				ld_MinError = ld_Error;
-				lk_BestIter = lk_Iter;
-			}
-		}
-		while (lk_BestIter != lk_Targets.constBegin())
-		{
-			--lk_BestIter;
-			double ld_Mz = lk_BestIter.key();
-			double ld_Error = fabs(ld_Mz - ld_QueryMz) / ld_Mz * 1000000.0;
-			if (ld_Error > ld_MassAccuracy)
-				break;
-		}
-		bool lb_BreakNext = false;
-		while (true)
-		{
-			double ld_Mz = lk_BestIter.key();
-			double ld_Error = fabs(ld_Mz - ld_QueryMz) / ld_Mz * 1000000.0;
-			printf("%9.4f %s (%1.2f ppm)\n", lk_BestIter.key(), lk_BestIter.value().toStdString().c_str(), ld_Error);
-			if (lb_BreakNext)
-				break;
-			++lk_BestIter;
-			ld_Mz = lk_BestIter.key();
-			ld_Error = fabs(ld_Mz - ld_QueryMz) / ld_Mz * 1000000.0;
-			if (ld_Error > ld_MassAccuracy)
-				lb_BreakNext = true;
-		}
-		exit(0);
+		ld_ProductMassAccuracy = QVariant(lk_Arguments[li_Index + 1]).toDouble();
+		lk_Arguments.removeAt(li_Index);
+		lk_Arguments.removeAt(li_Index);
 	}
 	
 	QStringList lk_SpectraFiles;
 	foreach (QString ls_Path, lk_Arguments)
 		lk_SpectraFiles << ls_Path;
 	
-	k_ChitoScanner lk_ChitoScanner(r_ScanType::All, QList<tk_IntPair>() << tk_IntPair(1, 1),
-		li_MaxIsotopeCount, li_MinCharge, li_MaxCharge, ld_MinSnr, ld_MassAccuracy);
+	k_ChitoScanner lk_ChitoScanner(r_ScanType::All, 
+		QList<tk_IntPair>() << tk_IntPair(1, 10000), li_MaxIsotopeCount, 
+		li_MinCharge, li_MaxCharge, ld_MinSnr, ld_PrecursorMassAccuracy, 
+		ld_ProductMassAccuracy);
 		
 	lk_ChitoScanner.scan(lk_SpectraFiles);
 }
