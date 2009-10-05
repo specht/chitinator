@@ -28,13 +28,24 @@ void printUsageAndExit()
 	printf("Usage: chitoscan [options] [spectra files]\n");
 	printf("Spectra files may be mzData, mzXML or mzML, optionally compressed (.gz|.bz2|.zip).\n");
 	printf("Options:\n");
+	printf("  --minSnr [float] (default: 2.0)\n");
+	printf("  --cropLower [float] (default: 0.05)\n");
+	printf("  --ionizationType [comma-separated ids] (default: 0)\n");
+	printf("      (0: H+, 1: Na+)\n");
+	printf("  --minDP [int] (default: 1)\n");
 	printf("  --maxDP [int] (default: 10)\n");
 	printf("  --minCharge [int] (default: 1)\n");
 	printf("  --maxCharge [int] (default: 3)\n");
+	printf("  --minIsotopeCount [int] (default: 1)\n");
 	printf("  --maxIsotopeCount [int] (default: 3)\n");
-	printf("  --minSnr [float] (default: 2.0)\n");
+	printf("  --variableLabel [comma-separated ids] (default: empty)\n");
+	printf("      (0: MS2 label [+2 Da], 1: water loss)\n");
+	printf("  --fixedLabel [comma-separated ids] (default: empty)\n");
+	printf("      (0: MS2 label [+2 Da], 1: water loss)\n");
 	printf("  --precursorMassAccuracy (ppm) [float] (default: 5.0)\n");
 	printf("  --productMassAccuracy (ppm) [float] (default: 700.0)\n");
+	printf("  --writeCompositionFingerprint [path]\n");
+	printf("      write CSV composition fingerprint to [path]\n");
 	exit(1);
 }
 
@@ -61,31 +72,88 @@ int main(int ai_ArgumentCount, char** ac_Arguments__)
 	
 	if (lk_Arguments.empty())
 		printUsageAndExit();
-		
-	r_ScanType::Enumeration le_ScanType = r_ScanType::All;
+
+	QSet<r_IonizationType::Enumeration> lk_IonizationType = 
+		QSet<r_IonizationType::Enumeration>() << r_IonizationType::Proton;
+	double ld_MinSnr = 2.0;
+	double ld_CropLower = 0.05;
+	int li_MinDP = 1;
 	int li_MaxDP = 10;
-	int li_MaxIsotopeCount = 3;
 	int li_MinCharge = 1;
 	int li_MaxCharge = 3;
-	double ld_MinSnr = 2.0;
+	int li_MinIsotopeCount = 1;
+	int li_MaxIsotopeCount = 3;
+	QSet<r_LabelType::Enumeration> lk_VariableLabel = 
+		QSet<r_LabelType::Enumeration>();
+	QSet<r_LabelType::Enumeration> lk_FixedLabel = 
+		QSet<r_LabelType::Enumeration>();
 	double ld_PrecursorMassAccuracy = 5.0;
 	double ld_ProductMassAccuracy = 700.0;
+	RefPtr<QIODevice> lk_pCompositionFingerprintDevice;
+	RefPtr<QTextStream> lk_pCompositionFingerprintStream;
 	
 	// consume options
-	int li_Index;
+	int li_Index = 0;
+	
+	li_Index = lk_Arguments.indexOf("--minSnr");
+	if (li_Index > -1)
+	{
+		ld_MinSnr = QVariant(lk_Arguments[li_Index + 1]).toDouble();
+		lk_Arguments.removeAt(li_Index);
+		lk_Arguments.removeAt(li_Index);
+	}
+	
+	li_Index = lk_Arguments.indexOf("--cropLower");
+	if (li_Index > -1)
+	{
+		ld_CropLower = QVariant(lk_Arguments[li_Index + 1]).toDouble();
+		lk_Arguments.removeAt(li_Index);
+		lk_Arguments.removeAt(li_Index);
+	}
+	
+	li_Index = lk_Arguments.indexOf("--ionizationType");
+	if (li_Index > -1)
+	{
+		QString ls_IonizationType = QVariant(lk_Arguments[li_Index + 1]).toString();
+		lk_Arguments.removeAt(li_Index);
+		lk_Arguments.removeAt(li_Index);
+		lk_IonizationType = QSet<r_IonizationType::Enumeration>();
+		foreach (QString ls_Item, ls_IonizationType.split(","))
+		{
+			bool lb_Ok = false;
+			int li_Id = ls_Item.trimmed().toInt(&lb_Ok);
+			if (!lb_Ok)
+			{
+				printf("Error: Unknown ionization type %s.\n", ls_Item.trimmed().toStdString().c_str());
+				exit(1);
+			}
+			switch(li_Id)
+			{
+				case 0:
+					lk_IonizationType << r_IonizationType::Proton;
+					break;
+				case 1:
+					lk_IonizationType << r_IonizationType::Sodium;
+					break;
+				default:
+					printf("Error: Unknown ionization type %s.\n", ls_Item.trimmed().toStdString().c_str());
+					exit(1);
+			}
+		}
+	}
+	
+	li_Index = lk_Arguments.indexOf("--minDP");
+	if (li_Index > -1)
+	{
+		li_MinDP = QVariant(lk_Arguments[li_Index + 1]).toInt();
+		lk_Arguments.removeAt(li_Index);
+		lk_Arguments.removeAt(li_Index);
+	}
 	
 	li_Index = lk_Arguments.indexOf("--maxDP");
 	if (li_Index > -1)
 	{
 		li_MaxDP = QVariant(lk_Arguments[li_Index + 1]).toInt();
-		lk_Arguments.removeAt(li_Index);
-		lk_Arguments.removeAt(li_Index);
-	}
-	
-	li_Index = lk_Arguments.indexOf("--maxIsotopeCount");
-	if (li_Index > -1)
-	{
-		li_MaxIsotopeCount = QVariant(lk_Arguments[li_Index + 1]).toInt();
 		lk_Arguments.removeAt(li_Index);
 		lk_Arguments.removeAt(li_Index);
 	}
@@ -106,12 +174,82 @@ int main(int ai_ArgumentCount, char** ac_Arguments__)
 		lk_Arguments.removeAt(li_Index);
 	}
 	
-	li_Index = lk_Arguments.indexOf("--minSnr");
+	li_Index = lk_Arguments.indexOf("--minIsotopeCount");
 	if (li_Index > -1)
 	{
-		ld_MinSnr = QVariant(lk_Arguments[li_Index + 1]).toDouble();
+		li_MinIsotopeCount = QVariant(lk_Arguments[li_Index + 1]).toInt();
 		lk_Arguments.removeAt(li_Index);
 		lk_Arguments.removeAt(li_Index);
+	}
+	
+	li_Index = lk_Arguments.indexOf("--maxIsotopeCount");
+	if (li_Index > -1)
+	{
+		li_MaxIsotopeCount = QVariant(lk_Arguments[li_Index + 1]).toInt();
+		lk_Arguments.removeAt(li_Index);
+		lk_Arguments.removeAt(li_Index);
+	}
+	
+	li_Index = lk_Arguments.indexOf("--variableLabel");
+	if (li_Index > -1)
+	{
+		QString ls_Label = QVariant(lk_Arguments[li_Index + 1]).toString();
+		lk_Arguments.removeAt(li_Index);
+		lk_Arguments.removeAt(li_Index);
+		lk_VariableLabel = QSet<r_LabelType::Enumeration>();
+		foreach (QString ls_Item, ls_Label.split(","))
+		{
+			bool lb_Ok = false;
+			int li_Id = ls_Item.trimmed().toInt(&lb_Ok);
+			if (!lb_Ok)
+			{
+				printf("Error: Unknown label %s.\n", ls_Item.trimmed().toStdString().c_str());
+				exit(1);
+			}
+			switch(li_Id)
+			{
+				case 0:
+					lk_VariableLabel << r_LabelType::ReducingEndLabel2Da;
+					break;
+				case 1:
+					lk_VariableLabel << r_LabelType::WaterLoss;
+					break;
+				default:
+					printf("Error: Unknown label %s.\n", ls_Item.trimmed().toStdString().c_str());
+					exit(1);
+			}
+		}
+	}
+	
+	li_Index = lk_Arguments.indexOf("--fixedLabel");
+	if (li_Index > -1)
+	{
+		QString ls_Label = QVariant(lk_Arguments[li_Index + 1]).toString();
+		lk_Arguments.removeAt(li_Index);
+		lk_Arguments.removeAt(li_Index);
+		lk_FixedLabel = QSet<r_LabelType::Enumeration>();
+		foreach (QString ls_Item, ls_Label.split(","))
+		{
+			bool lb_Ok = false;
+			int li_Id = ls_Item.trimmed().toInt(&lb_Ok);
+			if (!lb_Ok)
+			{
+				printf("Error: Unknown label %s.\n", ls_Item.trimmed().toStdString().c_str());
+				exit(1);
+			}
+			switch(li_Id)
+			{
+				case 0:
+					lk_FixedLabel << r_LabelType::ReducingEndLabel2Da;
+					break;
+				case 1:
+					lk_FixedLabel << r_LabelType::WaterLoss;
+					break;
+				default:
+					printf("Error: Unknown label %s.\n", ls_Item.trimmed().toStdString().c_str());
+					exit(1);
+			}
+		}
 	}
 	
 	li_Index = lk_Arguments.indexOf("--precursorMassAccuracy");
@@ -130,14 +268,44 @@ int main(int ai_ArgumentCount, char** ac_Arguments__)
 		lk_Arguments.removeAt(li_Index);
 	}
 	
+	li_Index = lk_Arguments.indexOf("--writeCompositionFingerprint");
+	if (li_Index > -1)
+	{
+		QString ls_Path = QVariant(lk_Arguments[li_Index + 1]).toString();
+		lk_Arguments.removeAt(li_Index);
+		lk_Arguments.removeAt(li_Index);
+		lk_pCompositionFingerprintDevice = RefPtr<QIODevice>(new QFile(ls_Path));
+		lk_pCompositionFingerprintDevice->open(QIODevice::WriteOnly);
+		lk_pCompositionFingerprintStream = RefPtr<QTextStream>(new QTextStream(lk_pCompositionFingerprintDevice.get_Pointer()));
+	}
+	
 	QStringList lk_SpectraFiles;
 	foreach (QString ls_Path, lk_Arguments)
 		lk_SpectraFiles << ls_Path;
 	
+	/*
+					double ad_MinSnr,
+					double ad_CropLower,
+					QSet<r_IonizationType::Enumeration> ak_IonizationType,
+					int ai_MinDP, int ai_MaxDP,
+					int ai_MinCharge, int ai_MaxCharge, 
+					int ai_MinIsotopeCount, int ai_MaxIsotopeCount, 
+					QSet<r_LabelType::Enumeration> ak_VariableLabel,
+					QSet<r_LabelType::Enumeration> ak_FixedLabel,
+					double ad_PrecursorMassAccuracy,
+					double ad_ProductMassAccuracy,
+					QTextStream* ak_CompositionFingerprintStream_ = NULL);
+	*/
 	k_ChitoScanner lk_ChitoScanner(r_ScanType::All, 
-		QList<tk_IntPair>() << tk_IntPair(1, 10000), li_MaxIsotopeCount, 
-		li_MinCharge, li_MaxCharge, ld_MinSnr, ld_PrecursorMassAccuracy, 
-		ld_ProductMassAccuracy);
+									QList<tk_IntPair>() << tk_IntPair(1, 10000),
+									ld_MinSnr, ld_CropLower,
+									lk_IonizationType, li_MinDP, li_MaxDP,
+									li_MinCharge, li_MaxCharge,
+									li_MinIsotopeCount, li_MaxIsotopeCount,
+									lk_VariableLabel, lk_FixedLabel,
+									ld_PrecursorMassAccuracy,
+									ld_ProductMassAccuracy,
+									lk_pCompositionFingerprintStream.get_Pointer());
 		
 	lk_ChitoScanner.scan(lk_SpectraFiles);
 }

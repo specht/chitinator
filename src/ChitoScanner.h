@@ -34,23 +34,49 @@ typedef QPair<int, int> tk_IntPair;
 const tk_IntPair gk_Undefined(-1, -1);
 
 
+struct r_IonizationType
+{
+	enum Enumeration
+	{
+		Proton = 0,
+		Sodium
+	};
+};
+
+
+struct r_LabelType
+{
+	enum Enumeration
+	{
+		ReducingEndLabel2Da = 0,
+		WaterLoss
+	};
+};
+
+
+extern QHash<r_IonizationType::Enumeration, double> gk_IonizationTypeMass;
+extern QHash<r_IonizationType::Enumeration, QString> gk_IonizationTypeLabel;
+extern QHash<r_LabelType::Enumeration, double> gk_LabelMass;
+extern QHash<r_LabelType::Enumeration, QString> gk_LabelLabel;
+
+
 struct r_OligoHit
 {
-	r_OligoHit(int ai_A = 0, int ai_D = 0, int ai_Isotope = 0,
-				int ai_Charge = 0, int ai_IonizationType = 0,
-				int ai_Label = 0, double ad_Mz = 0.0,
-				double ad_Loss = 0.0,
+	r_OligoHit(r_IonizationType::Enumeration ae_Ionization = r_IonizationType::Proton,
+				int ai_A = 0, int ai_D = 0, 
+				int ai_Charge = 0, int ai_Isotope = 0,
+				QSet<r_LabelType::Enumeration> ak_Label = QSet<r_LabelType::Enumeration>(),
+				double ad_Mz = 0.0,
 				double ad_MassAccuracy = 0.0, 
 				double ad_NextMassAccuracy = 0.0,
 				bool ab_IsGood = false)
-		: mi_A(ai_A)
+		: me_Ionization(ae_Ionization)
+		, mi_A(ai_A)
 		, mi_D(ai_D)
-		, mi_Isotope(ai_Isotope)
 		, mi_Charge(ai_Charge)
-		, mi_IonizationType(ai_IonizationType)
-		, mi_Label(ai_Label)
+		, mi_Isotope(ai_Isotope)
+		, mk_Label(ak_Label)
 		, md_Mz(ad_Mz)
-		, md_Loss(ad_Loss)
 		, md_MassAccuracy(ad_MassAccuracy)
 		, md_NextMassAccuracy(ad_NextMassAccuracy)
 		, mb_IsGood(ab_IsGood)
@@ -58,14 +84,13 @@ struct r_OligoHit
 	}
 	
 	r_OligoHit(const r_OligoHit& ar_Other)
-		: mi_A(ar_Other.mi_A)
+		: me_Ionization(ar_Other.me_Ionization)
+		, mi_A(ar_Other.mi_A)
 		, mi_D(ar_Other.mi_D)
-		, mi_Isotope(ar_Other.mi_Isotope)
 		, mi_Charge(ar_Other.mi_Charge)
-		, mi_IonizationType(ar_Other.mi_IonizationType)
-		, mi_Label(ar_Other.mi_Label)
+		, mi_Isotope(ar_Other.mi_Isotope)
+		, mk_Label(ar_Other.mk_Label)
 		, md_Mz(ar_Other.md_Mz)
-		, md_Loss(ar_Other.md_Loss)
 		, md_MassAccuracy(ar_Other.md_MassAccuracy)
 		, md_NextMassAccuracy(ar_Other.md_NextMassAccuracy)
 		, mb_IsGood(ar_Other.mb_IsGood)
@@ -74,25 +99,40 @@ struct r_OligoHit
 	
 	QString toString()
 	{
+		QList<r_LabelType::Enumeration> lk_LabelList = mk_Label.toList();
+		qSort(lk_LabelList.begin(), lk_LabelList.end());
+		QStringList lk_LabelString;
+		foreach (r_LabelType::Enumeration le_Label, lk_LabelList)
+			lk_LabelString << gk_LabelLabel[le_Label];
+		if (lk_LabelString.empty())
+			lk_LabelString << "(unlabeled)";
+		
 		if (mb_IsGood)
-			return QString("A%1D%2+%3 (%4%5+%6), %7 (%8 ppm, next: %9 ppm)")
+			return QString("A%1D%2+%3 (%4%5), %7 (%8 ppm, next: %9 ppm)")
 				.arg(mi_A).arg(mi_D).arg(mi_Isotope).arg(mi_Charge)
-				.arg(mi_IonizationType == 0 ? "H" : "Na")
-				.arg(md_Loss == 0.0 ? "" : QString(", -%1").arg(md_Loss))
-				.arg(mi_Label == 0 ? "unlabeled" : "labeled")
+				.arg(gk_IonizationTypeLabel[me_Ionization])
+				.arg(lk_LabelString.join(","))
 				.arg(md_MassAccuracy).arg(md_NextMassAccuracy);
 		else
 			return QString("[no hit]");
 	}
 	
+	QString compositionString()
+	{
+		if (mb_IsGood)
+			return QString("A%1D%2%3")
+				.arg(mi_A).arg(mi_D).arg(mk_Label.contains(r_LabelType::ReducingEndLabel2Da) ? "*" : "");
+		else
+			return QString("[no hit]");
+	}
+	
+	r_IonizationType::Enumeration me_Ionization;
 	int mi_A;
 	int mi_D;
-	int mi_Isotope;
 	int mi_Charge;
-	int mi_IonizationType;
-	int mi_Label;
+	int mi_Isotope;
+	QSet<r_LabelType::Enumeration> mk_Label;
 	double md_Mz;
-	double md_Loss;
 	double md_MassAccuracy;
 	double md_NextMassAccuracy;
 	bool mb_IsGood;
@@ -104,47 +144,64 @@ class k_ChitoScanner: public k_ScanIterator
 public:
 	k_ChitoScanner(r_ScanType::Enumeration ae_ScanType,
 					QList<tk_IntPair> ak_MsLevels,
-					int ai_MaxIsotopeCount, 
+					double ad_MinSnr,
+					double ad_CropLower,
+					QSet<r_IonizationType::Enumeration> ak_IonizationType,
+					int ai_MinDP, int ai_MaxDP,
 					int ai_MinCharge, int ai_MaxCharge, 
-					double ad_MinSnr, 
+					int ai_MinIsotopeCount, int ai_MaxIsotopeCount, 
+					QSet<r_LabelType::Enumeration> ak_VariableLabel,
+					QSet<r_LabelType::Enumeration> ak_FixedLabel,
 					double ad_PrecursorMassAccuracy,
-					double ad_ProductMassAccuracy);
+					double ad_ProductMassAccuracy,
+					QTextStream* ak_CompositionFingerprintStream_ = NULL);
 	virtual ~k_ChitoScanner();
 	
 	// quantify takes a list of spectra files and a hash of (peptide => protein) entries
 	virtual void scan(QStringList ak_SpectraFiles);
 	virtual void handleScan(r_Scan& ar_Scan);
 	virtual void progressFunction(QString as_ScanId, bool ab_InterestingScan);
-	virtual double calculateOligomerMass(int ai_IonizationType, 
+	virtual double calculateOligomerMass(r_IonizationType::Enumeration ae_Ionization, 
 										  int ai_DP, int ai_DA, 
 										  int ai_Charge, int ai_Isotope, 
-										  int ai_Label = 1, double ad_Loss = 0.0);
+										  QSet<r_LabelType::Enumeration> ak_ActiveLabel);
 	virtual r_OligoHit matchOligomer(double ad_Mz,
 									  double ad_MassAccuracy,
-									  tk_IntPair ak_IonizationType = gk_Undefined,
-									  tk_IntPair ak_DP = gk_Undefined,
-									  tk_IntPair ak_Charge = gk_Undefined,
-									  tk_IntPair ak_Isotope = gk_Undefined,
-									  tk_IntPair ak_Label = gk_Undefined,
-									  bool ab_CheckWaterLoss = false
+									  QSet<r_IonizationType::Enumeration> ak_IonizationType,
+									  int ai_MinDP, int ai_MaxDP,
+									  int ai_MinCharge, int ai_MaxCharge,
+									  int ai_MinIsotopeCount, int ai_MaxIsotopeCount,
+									  QSet<r_LabelType::Enumeration> ak_VariableLabel,
+									  QSet<r_LabelType::Enumeration> ak_FixedLabel
 								   );
 	virtual void calculateMeanAndStandardDeviation(
 		QList<double> ak_Values, double* ad_Mean_, double* ad_StandardDeviation_);
 	
 protected:
-	int mi_MaxIsotopeCount;
+	double md_MinSnr;
+	double md_CropLower;
+	QSet<r_IonizationType::Enumeration> mk_IonizationType;
+	int mi_MinDP;
+	int mi_MaxDP;
 	int mi_MinCharge;
 	int mi_MaxCharge;
-	double md_MinSnr;
+	int mi_MinIsotopeCount;
+	int mi_MaxIsotopeCount;
+	QSet<r_LabelType::Enumeration> mk_VariableLabel;
+	QSet<r_LabelType::Enumeration> mk_FixedLabel;
 	double md_PrecursorMassAccuracy;
 	double md_ProductMassAccuracy;
+	QTextStream* mk_CompositionFingerprintStream_;
+	
 	QString ms_CurrentSpot;
+
+	// how many peaks were there, how many matched to a product?
+	int mi_ExtractedMs1PeakCount;
+	int mi_MatchedMs1PeakCount;
+	
 	QList<double> mk_MS1MassAccuracies;
 	// this hash records the abundance of every (#A,#D) combination.
 	QHash<tk_IntPair, double> mk_DAAmounts;
-	// this hash records the abundance of every (#A,#D) combination,
-	// only by occurences, not by peak height
-	QHash<tk_IntPair, double> mk_DAAmountsUnweighted;
 	// this list contains all MS1 product DPs, it's double so we can
 	// do mean and SD afterwards with calculateMeanAndStandardDeviation
 	QList<double> mk_DPs; 
