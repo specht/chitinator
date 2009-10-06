@@ -1,6 +1,7 @@
 projects:
-  - projects/qtrace
-qt: [core, xml, svg, gui]
+  - projects/chitinator
+  - projects/chitoscan
+qt: [core, xml]
 win32Libs: []
 versionInject:
   src/version.h: |
