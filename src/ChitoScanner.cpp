@@ -105,6 +105,7 @@ void k_ChitoScanner::scan(QStringList ak_SpectraFiles)
 
 		if (mk_CompositionFingerprintStream_)
 		{
+			mk_CompositionFingerprintStream_->setRealNumberNotation(QTextStream::FixedNotation);
 			*mk_CompositionFingerprintStream_ << "Amount,A,D\n";
 			foreach (tk_IntPair lk_Pair, mk_DAAmounts.keys())
 			{
