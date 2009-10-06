@@ -154,10 +154,10 @@ int main(int ai_ArgumentCount, char** ac_Arguments__)
 	k_Digestion lk_Digestion;
 	
 	typedef QPair<int, int> tk_IntPair;
-	QHash<tk_IntPair, double> mk_Fingerprint;
+	QHash<tk_IntPair, int> mk_Fingerprint;
 	for (int li_Run = 1; li_Run <= li_Runs; ++li_Run)
 	{
-		printf("\rDP %d, enzyme %s, DA %1.2f%%: %d...", li_DP, ls_Enzyme.toStdString().c_str(), lf_DA, li_Run);
+		printf("\rDP %d, enzyme %s, DA %1.2f%%: %d...", li_DP, ls_Enzyme.toStdString().c_str(), lf_DA * 100.0, li_Run);
 		QList<RefPtr<k_Polymer> > lk_Polymers;
 		RefPtr<k_Polymer> lk_pPolymer(new k_Polymer(lr_PolymerParameters));
 		lk_Polymers.push_back(lk_pPolymer);
@@ -202,8 +202,8 @@ int main(int ai_ArgumentCount, char** ac_Arguments__)
 			int li_A = lk_Products[i]->getLength() - li_D;
 			tk_IntPair lk_AD = tk_IntPair(li_A, li_D);
 			if (!mk_Fingerprint.contains(lk_AD))
-				mk_Fingerprint[lk_AD] = 0.0;
-			mk_Fingerprint[lk_AD] += 1.0;
+				mk_Fingerprint[lk_AD] = 0;
+			mk_Fingerprint[lk_AD] += 1;
 		}
 	}
 	if (lk_pCompositionFingerprintStream)
