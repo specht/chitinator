@@ -1,0 +1,9 @@
+projects:
+  - projects/qtrace
+qt: [core, xml, svg, gui]
+win32Libs: []
+versionInject:
+  src/version.h: |
+    #pragma once
+    #include <QtCore>
+    QString gs_Version = "#{VERSION}";
