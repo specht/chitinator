@@ -148,8 +148,7 @@ public:
 					double ad_CropLower,
 					QSet<r_IonizationType::Enumeration> ak_IonizationType,
 					int ai_MinDP, int ai_MaxDP,
-					int ai_MinCharge, int ai_MaxCharge, 
-					int ai_MinIsotopeCount, int ai_MaxIsotopeCount, 
+					int ai_MinCharge, int ai_MaxCharge, int ai_IsotopeCount,
 					QSet<r_LabelType::Enumeration> ak_VariableLabel,
 					QSet<r_LabelType::Enumeration> ak_FixedLabel,
 					double ad_PrecursorMassAccuracy,
@@ -170,7 +169,7 @@ public:
 									  QSet<r_IonizationType::Enumeration> ak_IonizationType,
 									  int ai_MinDP, int ai_MaxDP,
 									  int ai_MinCharge, int ai_MaxCharge,
-									  int ai_MinIsotopeCount, int ai_MaxIsotopeCount,
+									  int ai_IsotopeCount,
 									  QSet<r_LabelType::Enumeration> ak_VariableLabel,
 									  QSet<r_LabelType::Enumeration> ak_FixedLabel
 								   );
@@ -185,8 +184,7 @@ protected:
 	int mi_MaxDP;
 	int mi_MinCharge;
 	int mi_MaxCharge;
-	int mi_MinIsotopeCount;
-	int mi_MaxIsotopeCount;
+	int mi_IsotopeCount;
 	QSet<r_LabelType::Enumeration> mk_VariableLabel;
 	QSet<r_LabelType::Enumeration> mk_FixedLabel;
 	double md_PrecursorMassAccuracy;

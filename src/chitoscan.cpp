@@ -36,8 +36,7 @@ void printUsageAndExit()
 	printf("  --maxDP [int] (default: 10)\n");
 	printf("  --minCharge [int] (default: 1)\n");
 	printf("  --maxCharge [int] (default: 3)\n");
-	printf("  --minIsotopeCount [int] (default: 1)\n");
-	printf("  --maxIsotopeCount [int] (default: 3)\n");
+	printf("  --isotopeCount [int] (default: 2)\n");
 	printf("  --variableLabel [comma-separated ids] (default: empty)\n");
 	printf("      (0: MS2 label [+2 Da], 1: water loss)\n");
 	printf("  --fixedLabel [comma-separated ids] (default: empty)\n");
@@ -81,8 +80,7 @@ int main(int ai_ArgumentCount, char** ac_Arguments__)
 	int li_MaxDP = 10;
 	int li_MinCharge = 1;
 	int li_MaxCharge = 3;
-	int li_MinIsotopeCount = 1;
-	int li_MaxIsotopeCount = 3;
+	int li_IsotopeCount = 2;
 	QSet<r_LabelType::Enumeration> lk_VariableLabel = 
 		QSet<r_LabelType::Enumeration>();
 	QSet<r_LabelType::Enumeration> lk_FixedLabel = 
@@ -174,18 +172,10 @@ int main(int ai_ArgumentCount, char** ac_Arguments__)
 		lk_Arguments.removeAt(li_Index);
 	}
 	
-	li_Index = lk_Arguments.indexOf("--minIsotopeCount");
+	li_Index = lk_Arguments.indexOf("--isotopeCount");
 	if (li_Index > -1)
 	{
-		li_MinIsotopeCount = QVariant(lk_Arguments[li_Index + 1]).toInt();
-		lk_Arguments.removeAt(li_Index);
-		lk_Arguments.removeAt(li_Index);
-	}
-	
-	li_Index = lk_Arguments.indexOf("--maxIsotopeCount");
-	if (li_Index > -1)
-	{
-		li_MaxIsotopeCount = QVariant(lk_Arguments[li_Index + 1]).toInt();
+		li_IsotopeCount = QVariant(lk_Arguments[li_Index + 1]).toInt();
 		lk_Arguments.removeAt(li_Index);
 		lk_Arguments.removeAt(li_Index);
 	}
@@ -283,25 +273,11 @@ int main(int ai_ArgumentCount, char** ac_Arguments__)
 	foreach (QString ls_Path, lk_Arguments)
 		lk_SpectraFiles << ls_Path;
 	
-	/*
-					double ad_MinSnr,
-					double ad_CropLower,
-					QSet<r_IonizationType::Enumeration> ak_IonizationType,
-					int ai_MinDP, int ai_MaxDP,
-					int ai_MinCharge, int ai_MaxCharge, 
-					int ai_MinIsotopeCount, int ai_MaxIsotopeCount, 
-					QSet<r_LabelType::Enumeration> ak_VariableLabel,
-					QSet<r_LabelType::Enumeration> ak_FixedLabel,
-					double ad_PrecursorMassAccuracy,
-					double ad_ProductMassAccuracy,
-					QTextStream* ak_CompositionFingerprintStream_ = NULL);
-	*/
 	k_ChitoScanner lk_ChitoScanner(r_ScanType::All, 
 									QList<tk_IntPair>() << tk_IntPair(1, 10000),
 									ld_MinSnr, ld_CropLower,
 									lk_IonizationType, li_MinDP, li_MaxDP,
-									li_MinCharge, li_MaxCharge,
-									li_MinIsotopeCount, li_MaxIsotopeCount,
+									li_MinCharge, li_MaxCharge, li_IsotopeCount,
 									lk_VariableLabel, lk_FixedLabel,
 									ld_PrecursorMassAccuracy,
 									ld_ProductMassAccuracy,

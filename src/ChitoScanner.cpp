@@ -37,7 +37,7 @@ k_ChitoScanner::k_ChitoScanner(r_ScanType::Enumeration ae_ScanType,
 								QSet<r_IonizationType::Enumeration> ak_IonizationType,
 								int ai_MinDP, int ai_MaxDP,
 								int ai_MinCharge, int ai_MaxCharge, 
-								int ai_MinIsotopeCount, int ai_MaxIsotopeCount, 
+								int ai_IsotopeCount, 
 								QSet<r_LabelType::Enumeration> ak_VariableLabel,
 								QSet<r_LabelType::Enumeration> ak_FixedLabel,
 								double ad_PrecursorMassAccuracy,
@@ -51,8 +51,7 @@ k_ChitoScanner::k_ChitoScanner(r_ScanType::Enumeration ae_ScanType,
 	, mi_MaxDP(ai_MaxDP)
 	, mi_MinCharge(ai_MinCharge)
 	, mi_MaxCharge(ai_MaxCharge)
-	, mi_MinIsotopeCount(ai_MinIsotopeCount)
-	, mi_MaxIsotopeCount(ai_MaxIsotopeCount)
+	, mi_IsotopeCount(ai_IsotopeCount)
 	, mk_VariableLabel(ak_VariableLabel)
 	, mk_FixedLabel(ak_FixedLabel)
 	, md_PrecursorMassAccuracy(ad_PrecursorMassAccuracy)
@@ -188,8 +187,7 @@ void k_ChitoScanner::handleScan(r_Scan& ar_Scan)
 				matchOligomer(lr_Peak.md_PeakMz, 
 							   md_PrecursorMassAccuracy, 
 							   mk_IonizationType, mi_MinDP, mi_MaxDP,
-							   mi_MinCharge, mi_MaxCharge,
-							   mi_MinIsotopeCount, mi_MaxIsotopeCount,
+							   mi_MinCharge, mi_MaxCharge, mi_IsotopeCount,
 							   mk_VariableLabel, mk_FixedLabel);
 			if (lr_Hit.mb_IsGood)
 			{
@@ -273,7 +271,7 @@ k_ChitoScanner::matchOligomer(double ad_Mz,
 							   QSet<r_IonizationType::Enumeration> ak_IonizationType,
 							   int ai_MinDP, int ai_MaxDP,
 							   int ai_MinCharge, int ai_MaxCharge,
-							   int ai_MinIsotopeCount, int ai_MaxIsotopeCount,
+							   int ai_IsotopeCount,
 							   QSet<r_LabelType::Enumeration> ak_VariableLabel,
 							   QSet<r_LabelType::Enumeration> ak_FixedLabel)
 {
@@ -284,28 +282,28 @@ k_ChitoScanner::matchOligomer(double ad_Mz,
 	qSort(lk_IonizationTypeList.begin(), lk_IonizationTypeList.end());
 	QStringList lk_IonizationTypeCsvList;
 	foreach (r_IonizationType::Enumeration le_Ionization, lk_IonizationTypeList)
-		lk_IonizationTypeCsvList << gk_IonizationTypeLabel[le_Ionization];
+		lk_IonizationTypeCsvList << QVariant(le_Ionization).toString();
 	
 	QList<r_LabelType::Enumeration> lk_VariableLabelList = ak_VariableLabel.toList();
 	qSort(lk_VariableLabelList.begin(), lk_VariableLabelList.end());
 	QStringList lk_VariableLabelCsvList;
 	foreach (r_LabelType::Enumeration le_Label, lk_VariableLabelList)
-		lk_VariableLabelCsvList << gk_LabelLabel[le_Label];
+		lk_VariableLabelCsvList << QVariant(le_Label).toString();
 	
 	QList<r_LabelType::Enumeration> lk_FixedLabelList = ak_FixedLabel.toList();
 	qSort(lk_FixedLabelList.begin(), lk_FixedLabelList.end());
 	QStringList lk_FixedLabelCsvList;
 	foreach (r_LabelType::Enumeration le_Label, lk_FixedLabelList)
-		lk_FixedLabelCsvList << gk_LabelLabel[le_Label];
+		lk_FixedLabelCsvList << QVariant(le_Label).toString();
 	
-	QString ls_HashKey = QString("it%1/dp%2,%3/ch%4,%5/iso%6,%7/varl%8/fixl%9")
+	QString ls_HashKey = QString("it%1/dp%2,%3/ch%4,%5/iso%6/varl%7/fixl%8")
 		.arg(lk_IonizationTypeCsvList.join(","))
 		.arg(ai_MinDP).arg(ai_MaxDP)
 		.arg(ai_MinCharge).arg(ai_MaxCharge)
-		.arg(ai_MinIsotopeCount).arg(ai_MaxIsotopeCount)
+		.arg(ai_IsotopeCount)
 		.arg(lk_VariableLabelCsvList.join(","))
 		.arg(lk_FixedLabelCsvList.join(","));
-
+		
 	if (!mk_TargetCache.contains(ls_HashKey))
 	{
 		foreach (r_IonizationType::Enumeration le_Ionization, ak_IonizationType)
@@ -318,7 +316,7 @@ k_ChitoScanner::matchOligomer(double ad_Mz,
 					int li_D = li_DP - li_DA;
 					for (int li_Charge = ai_MinCharge; li_Charge <= ai_MaxCharge; ++li_Charge)
 					{
-						for (int li_Isotope = ai_MinIsotopeCount; li_Isotope <= ai_MaxIsotopeCount; ++li_Isotope)
+						for (int li_Isotope = 0; li_Isotope < ai_IsotopeCount; ++li_Isotope)
 						{
 							QList<r_LabelType::Enumeration> lk_VariableLabelList = mk_VariableLabel.toList();
 							int li_LabelCombinationCount = 1 << (mk_VariableLabel.size());
