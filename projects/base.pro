@@ -5,18 +5,17 @@ CONFIG += debug_and_release console
 DEPENDPATH += .
 INCLUDEPATH += .
 
-LIBS += -lptb -lbz2 -lquazip
+macx {
+	LIBPATH += /Users/michael/programming/ext/lib
+	INCLUDEPATH += /Users/michael/programming/ext/include
+}
 
 macx {
 	CONFIG -= app_bundle
 	CONFIG += x86
 }
 
-win32 {
-	LIBS += -lzdll
-} else {
-	LIBS += -lz
-}
+LIBS += -lptb -lz -lbz2 -lquazip
 
 CONFIG(debug, debug|release) {
 	OBJECTS_DIR = ../../obj/debug/
