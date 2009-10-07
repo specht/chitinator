@@ -37,12 +37,16 @@ void printUsageAndExit()
 	printf("  --minCharge [int] (default: 1)\n");
 	printf("  --maxCharge [int] (default: 3)\n");
 	printf("  --isotopeCount [int] (default: 2)\n");
-	printf("  --variableLabel [comma-separated ids] (default: empty)\n");
-	printf("      (0: MS2 label [+2 Da], 1: water loss)\n");
-	printf("  --fixedLabel [comma-separated ids] (default: empty)\n");
-	printf("      (0: MS2 label [+2 Da], 1: water loss)\n");
 	printf("  --precursorMassAccuracy (ppm) [float] (default: 5.0)\n");
+	printf("  --ms1VariableLabel [comma-separated ids] (default: empty)\n");
+	printf("      (0: MS2 label [+2 Da], 1: water loss)\n");
+	printf("  --ms1FixedLabel [comma-separated ids] (default: empty)\n");
+	printf("      (0: MS2 label [+2 Da], 1: water loss)\n");
 	printf("  --productMassAccuracy (ppm) [float] (default: 700.0)\n");
+	printf("  --ms2VariableLabel [comma-separated ids] (default: empty)\n");
+	printf("      (0: MS2 label [+2 Da], 1: water loss)\n");
+	printf("  --ms2FixedLabel [comma-separated ids] (default: empty)\n");
+	printf("      (0: MS2 label [+2 Da], 1: water loss)\n");
 	printf("  --writeCompositionFingerprint [path]\n");
 	printf("      write CSV composition fingerprint to [path]\n");
 	exit(1);
@@ -63,6 +67,35 @@ bool stringToBool(QString& as_String)
 };
 
 
+QSet<r_LabelType::Enumeration> parseLabel(QString as_Label)
+{
+	QSet<r_LabelType::Enumeration> lk_Label;
+	foreach (QString ls_Item, as_Label.split(","))
+	{
+		bool lb_Ok = false;
+		int li_Id = ls_Item.trimmed().toInt(&lb_Ok);
+		if (!lb_Ok)
+		{
+			printf("Error: Unknown label %s.\n", ls_Item.trimmed().toStdString().c_str());
+			exit(1);
+		}
+		switch(li_Id)
+		{
+			case 0:
+				lk_Label << r_LabelType::ReducingEndLabel2Da;
+				break;
+			case 1:
+				lk_Label << r_LabelType::WaterLoss;
+				break;
+			default:
+				printf("Error: Unknown label %s.\n", ls_Item.trimmed().toStdString().c_str());
+				exit(1);
+		}
+	}
+	return lk_Label;
+}
+
+
 int main(int ai_ArgumentCount, char** ac_Arguments__)
 {
 	QStringList lk_Arguments;
@@ -81,12 +114,16 @@ int main(int ai_ArgumentCount, char** ac_Arguments__)
 	int li_MinCharge = 1;
 	int li_MaxCharge = 3;
 	int li_IsotopeCount = 2;
-	QSet<r_LabelType::Enumeration> lk_VariableLabel = 
-		QSet<r_LabelType::Enumeration>();
-	QSet<r_LabelType::Enumeration> lk_FixedLabel = 
-		QSet<r_LabelType::Enumeration>();
 	double ld_PrecursorMassAccuracy = 5.0;
+	QSet<r_LabelType::Enumeration> lk_Ms1VariableLabel = 
+		QSet<r_LabelType::Enumeration>();
+	QSet<r_LabelType::Enumeration> lk_Ms1FixedLabel = 
+		QSet<r_LabelType::Enumeration>();
 	double ld_ProductMassAccuracy = 700.0;
+	QSet<r_LabelType::Enumeration> lk_Ms2VariableLabel = 
+		QSet<r_LabelType::Enumeration>();
+	QSet<r_LabelType::Enumeration> lk_Ms2FixedLabel = 
+		QSet<r_LabelType::Enumeration>();
 	RefPtr<QIODevice> lk_pCompositionFingerprintDevice;
 	RefPtr<QTextStream> lk_pCompositionFingerprintStream;
 	
@@ -180,68 +217,6 @@ int main(int ai_ArgumentCount, char** ac_Arguments__)
 		lk_Arguments.removeAt(li_Index);
 	}
 	
-	li_Index = lk_Arguments.indexOf("--variableLabel");
-	if (li_Index > -1)
-	{
-		QString ls_Label = QVariant(lk_Arguments[li_Index + 1]).toString();
-		lk_Arguments.removeAt(li_Index);
-		lk_Arguments.removeAt(li_Index);
-		lk_VariableLabel = QSet<r_LabelType::Enumeration>();
-		foreach (QString ls_Item, ls_Label.split(","))
-		{
-			bool lb_Ok = false;
-			int li_Id = ls_Item.trimmed().toInt(&lb_Ok);
-			if (!lb_Ok)
-			{
-				printf("Error: Unknown label %s.\n", ls_Item.trimmed().toStdString().c_str());
-				exit(1);
-			}
-			switch(li_Id)
-			{
-				case 0:
-					lk_VariableLabel << r_LabelType::ReducingEndLabel2Da;
-					break;
-				case 1:
-					lk_VariableLabel << r_LabelType::WaterLoss;
-					break;
-				default:
-					printf("Error: Unknown label %s.\n", ls_Item.trimmed().toStdString().c_str());
-					exit(1);
-			}
-		}
-	}
-	
-	li_Index = lk_Arguments.indexOf("--fixedLabel");
-	if (li_Index > -1)
-	{
-		QString ls_Label = QVariant(lk_Arguments[li_Index + 1]).toString();
-		lk_Arguments.removeAt(li_Index);
-		lk_Arguments.removeAt(li_Index);
-		lk_FixedLabel = QSet<r_LabelType::Enumeration>();
-		foreach (QString ls_Item, ls_Label.split(","))
-		{
-			bool lb_Ok = false;
-			int li_Id = ls_Item.trimmed().toInt(&lb_Ok);
-			if (!lb_Ok)
-			{
-				printf("Error: Unknown label %s.\n", ls_Item.trimmed().toStdString().c_str());
-				exit(1);
-			}
-			switch(li_Id)
-			{
-				case 0:
-					lk_FixedLabel << r_LabelType::ReducingEndLabel2Da;
-					break;
-				case 1:
-					lk_FixedLabel << r_LabelType::WaterLoss;
-					break;
-				default:
-					printf("Error: Unknown label %s.\n", ls_Item.trimmed().toStdString().c_str());
-					exit(1);
-			}
-		}
-	}
-	
 	li_Index = lk_Arguments.indexOf("--precursorMassAccuracy");
 	if (li_Index > -1)
 	{
@@ -250,12 +225,48 @@ int main(int ai_ArgumentCount, char** ac_Arguments__)
 		lk_Arguments.removeAt(li_Index);
 	}
 	
+	li_Index = lk_Arguments.indexOf("--ms1VariableLabel");
+	if (li_Index > -1)
+	{
+		QString ls_Label = QVariant(lk_Arguments[li_Index + 1]).toString();
+		lk_Arguments.removeAt(li_Index);
+		lk_Arguments.removeAt(li_Index);
+		lk_Ms1VariableLabel = parseLabel(ls_Label);
+	}
+	
+	li_Index = lk_Arguments.indexOf("--ms1FixedLabel");
+	if (li_Index > -1)
+	{
+		QString ls_Label = QVariant(lk_Arguments[li_Index + 1]).toString();
+		lk_Arguments.removeAt(li_Index);
+		lk_Arguments.removeAt(li_Index);
+		lk_Ms1FixedLabel = parseLabel(ls_Label);
+	}
+	
 	li_Index = lk_Arguments.indexOf("--productMassAccuracy");
 	if (li_Index > -1)
 	{
 		ld_ProductMassAccuracy = QVariant(lk_Arguments[li_Index + 1]).toDouble();
 		lk_Arguments.removeAt(li_Index);
 		lk_Arguments.removeAt(li_Index);
+	}
+	
+	li_Index = lk_Arguments.indexOf("--ms2VariableLabel");
+	if (li_Index > -1)
+	{
+		QString ls_Label = QVariant(lk_Arguments[li_Index + 1]).toString();
+		lk_Arguments.removeAt(li_Index);
+		lk_Arguments.removeAt(li_Index);
+		lk_Ms2VariableLabel = parseLabel(ls_Label);
+	}
+	
+	li_Index = lk_Arguments.indexOf("--ms2FixedLabel");
+	if (li_Index > -1)
+	{
+		QString ls_Label = QVariant(lk_Arguments[li_Index + 1]).toString();
+		lk_Arguments.removeAt(li_Index);
+		lk_Arguments.removeAt(li_Index);
+		lk_Ms2FixedLabel = parseLabel(ls_Label);
 	}
 	
 	li_Index = lk_Arguments.indexOf("--writeCompositionFingerprint");
@@ -278,9 +289,10 @@ int main(int ai_ArgumentCount, char** ac_Arguments__)
 									ld_MinSnr, ld_CropLower,
 									lk_IonizationType, li_MinDP, li_MaxDP,
 									li_MinCharge, li_MaxCharge, li_IsotopeCount,
-									lk_VariableLabel, lk_FixedLabel,
 									ld_PrecursorMassAccuracy,
+									lk_Ms1VariableLabel, lk_Ms1FixedLabel,
 									ld_ProductMassAccuracy,
+									lk_Ms2VariableLabel, lk_Ms2FixedLabel,
 									lk_pCompositionFingerprintStream.get_Pointer());
 		
 	lk_ChitoScanner.scan(lk_SpectraFiles);

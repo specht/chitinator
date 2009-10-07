@@ -38,10 +38,12 @@ k_ChitoScanner::k_ChitoScanner(r_ScanType::Enumeration ae_ScanType,
 								int ai_MinDP, int ai_MaxDP,
 								int ai_MinCharge, int ai_MaxCharge, 
 								int ai_IsotopeCount, 
-								QSet<r_LabelType::Enumeration> ak_VariableLabel,
-								QSet<r_LabelType::Enumeration> ak_FixedLabel,
 								double ad_PrecursorMassAccuracy,
+								QSet<r_LabelType::Enumeration> ak_Ms1VariableLabel,
+								QSet<r_LabelType::Enumeration> ak_Ms1FixedLabel,
 								double ad_ProductMassAccuracy,
+								QSet<r_LabelType::Enumeration> ak_Ms2VariableLabel,
+								QSet<r_LabelType::Enumeration> ak_Ms2FixedLabel,
 								QTextStream* ak_CompositionFingerprintStream_)
 	: k_ScanIterator(ae_ScanType, ak_MsLevels)
 	, md_MinSnr(ad_MinSnr)
@@ -52,15 +54,18 @@ k_ChitoScanner::k_ChitoScanner(r_ScanType::Enumeration ae_ScanType,
 	, mi_MinCharge(ai_MinCharge)
 	, mi_MaxCharge(ai_MaxCharge)
 	, mi_IsotopeCount(ai_IsotopeCount)
-	, mk_VariableLabel(ak_VariableLabel)
-	, mk_FixedLabel(ak_FixedLabel)
 	, md_PrecursorMassAccuracy(ad_PrecursorMassAccuracy)
+	, mk_Ms1VariableLabel(ak_Ms1VariableLabel)
+	, mk_Ms1FixedLabel(ak_Ms1FixedLabel)
 	, md_ProductMassAccuracy(ad_ProductMassAccuracy)
+	, mk_Ms2VariableLabel(ak_Ms2VariableLabel)
+	, mk_Ms2FixedLabel(ak_Ms2FixedLabel)
 	, mk_CompositionFingerprintStream_(ak_CompositionFingerprintStream_)
 {
 	// subtract fixed labels from var labels,
 	// because they're not really variable, huh?
-	mk_VariableLabel -= mk_FixedLabel;
+	mk_Ms1VariableLabel -= mk_Ms1FixedLabel;
+	mk_Ms2VariableLabel -= mk_Ms2FixedLabel;
 	
 	gk_IonizationTypeMass[r_IonizationType::Proton] = MASS_HYDROGEN;
 	gk_IonizationTypeMass[r_IonizationType::Sodium] = MASS_SODIUM;
@@ -68,7 +73,7 @@ k_ChitoScanner::k_ChitoScanner(r_ScanType::Enumeration ae_ScanType,
 	gk_IonizationTypeLabel[r_IonizationType::Sodium] = "Na+";
 	gk_LabelMass[r_LabelType::ReducingEndLabel2Da] = MASS_HYDROGEN * 2.0;
 	gk_LabelMass[r_LabelType::WaterLoss] = -MASS_WATER;
-	gk_LabelLabel[r_LabelType::ReducingEndLabel2Da] = "RE label (+2 Da)";
+	gk_LabelLabel[r_LabelType::ReducingEndLabel2Da] = "RE";
 	gk_LabelLabel[r_LabelType::WaterLoss] = "water loss";
 }
 
@@ -90,28 +95,30 @@ void k_ChitoScanner::scan(QStringList ak_SpectraFiles)
 		mk_MS1MassAccuracies.clear();
 		mi_MS2PeakHitCount = 0;
 		mi_MS2PeakHitCountWithIsotope = 0;
-		mk_DAAmounts.clear();
-		mk_DPs.clear();
+		mk_MS1Fingerprint.clear();
 		mi_ExtractedMs1PeakCount = 0;
 		mi_MatchedMs1PeakCount = 0;
+		mi_PrecursorCount = 0;
+		mi_MatchedPrecursorCount = 0;
+		mi_ExtractedMs2PeakCount = 0;
+		mi_MatchedMs2PeakCount = 0;
 	
 		// parse spot
 		this->parseFile(ls_Path);
 		
 		printf(" done.\n");
 		
-		qSort(mk_DPs.begin(), mk_DPs.end());
 		qSort(mk_MS1MassAccuracies.begin(), mk_MS1MassAccuracies.end());
 
 		if (mk_CompositionFingerprintStream_)
 		{
 			mk_CompositionFingerprintStream_->setRealNumberNotation(QTextStream::FixedNotation);
 			*mk_CompositionFingerprintStream_ << "Amount,A,D\n";
-			foreach (tk_IntPair lk_Pair, mk_DAAmounts.keys())
+			foreach (tk_IntPair lk_Pair, mk_MS1Fingerprint.keys())
 			{
 				int li_A = lk_Pair.first;
 				int li_D = lk_Pair.second;
-				double ld_Amount = mk_DAAmounts[lk_Pair];
+				double ld_Amount = mk_MS1Fingerprint[lk_Pair];
 				*mk_CompositionFingerprintStream_ << ld_Amount << "," << li_A << "," << li_D << "\n";
 			}
 		}
@@ -119,29 +126,17 @@ void k_ChitoScanner::scan(QStringList ak_SpectraFiles)
 		printf("From %d MS1 peaks, %d matched to a product (%1.2f%%)\n",
 				mi_ExtractedMs1PeakCount, mi_MatchedMs1PeakCount,
 				(double)mi_MatchedMs1PeakCount / mi_ExtractedMs1PeakCount * 100.0);
+		printf("From %d MS2 scan precursors, %d matched to a product (%1.2f%%)\n",
+				mi_PrecursorCount, mi_MatchedPrecursorCount,
+				(double)mi_MatchedPrecursorCount / mi_PrecursorCount * 100.0);
+		printf("From %d MS2 peaks with matched precursors, %d matched to a product (%1.2f%%)\n",
+				mi_ExtractedMs2PeakCount, mi_MatchedMs2PeakCount,
+				(double)mi_MatchedMs2PeakCount / mi_ExtractedMs2PeakCount * 100.0);
 				
 /*		printf("MS1 mass accuracies (%d entries):\n", mk_MS1MassAccuracies.size());
 			for (int i = 8; i <= 10; ++i)
 			printf("%3i%% %9.4f / ", i * 10, mk_MS1MassAccuracies[(mk_MS1MassAccuracies.size() - 1) * i / 10]);
 		printf("\n\n");
-		
-		double ld_ProductDA = 0.0;
-		double ld_AmountSum = 0.0;
-		foreach (tk_IntPair lk_Pair, mk_DAAmounts.keys())
-		{
-			double ld_Amount = mk_DAAmounts[lk_Pair];
-			ld_AmountSum += ld_Amount;
-			double ld_DA = (double)lk_Pair.first / (double)(lk_Pair.first + lk_Pair.second);
-			ld_ProductDA += ld_DA * ld_Amount;
-		}
-		ld_ProductDA /= ld_AmountSum;
-		printf("Product DA (weighted)  : %1.2f%%\n", ld_ProductDA * 100.0);
-		
-		printf("Product DP median : %d\n", (int)(mk_DPs[mk_DPs.size() / 2]));
-		double ld_DPMean = 0.0;
-		double ld_DPSD = 0.0;
-		calculateMeanAndStandardDeviation(mk_DPs, &ld_DPMean, &ld_DPSD);
-		printf("Product DP mean/SD: %1.2f / %1.2f\n\n", ld_DPMean, ld_DPSD);
 		
 		printf("MS2 peak hit with isotope: %1.2f%%.\n\n", (double)mi_MS2PeakHitCountWithIsotope / mi_MS2PeakHitCount * 100.0);*/
 	}
@@ -189,31 +184,59 @@ void k_ChitoScanner::handleScan(r_Scan& ar_Scan)
 							   md_PrecursorMassAccuracy, 
 							   mk_IonizationType, mi_MinDP, mi_MaxDP,
 							   mi_MinCharge, mi_MaxCharge, mi_IsotopeCount,
-							   mk_VariableLabel, mk_FixedLabel);
+							   mk_Ms1VariableLabel, mk_Ms1FixedLabel);
 			if (lr_Hit.mb_IsGood)
 			{
 				mi_MatchedMs1PeakCount += 1;
 				mk_MS1MassAccuracies << lr_Hit.md_MassAccuracy;
 				tk_IntPair lk_Pair(lr_Hit.mi_A, lr_Hit.mi_D);
 				
-				if (!mk_DAAmounts.contains(lk_Pair))
-					mk_DAAmounts[lk_Pair] = 0.0;
-				mk_DAAmounts[lk_Pair] += lr_Peak.md_PeakIntensity;
-				
-				mk_DPs << (lr_Hit.mi_A + lr_Hit.mi_D);
+				if (!mk_MS1Fingerprint.contains(lk_Pair))
+					mk_MS1Fingerprint[lk_Pair] = 0.0;
+				mk_MS1Fingerprint[lk_Pair] += lr_Peak.md_PeakIntensity;
 			}
-//  			printf("%1.4f %s\n", lr_Peak.md_PeakMz, lr_Hit.toString().toStdString().c_str());
 		}
 	}
 	
-// 	if (ar_Scan.mi_MsLevel == 2)
-// 	{
-// 		r_Precursor lr_Precursor = ar_Scan.mk_Precursors.first();
-// 		r_OligoHit lr_PrecursorHit = 
-// 			matchOligomer(lr_Precursor.md_Mz, md_PrecursorMassAccuracy,
-// 						   gk_Undefined, gk_Undefined,
-// 						   tk_IntPair(lr_Precursor.mi_ChargeState,
-// 									   lr_Precursor.mi_ChargeState));
+ 	if (ar_Scan.mi_MsLevel == 2)
+ 	{
+		if (ar_Scan.mk_Precursors.size() != 1)
+		{
+			printf("Oops! Scan #%s has %d precursors, where we would expect exactly one --> Go figure out that one!\n", ar_Scan.ms_Id.toStdString().c_str(), ar_Scan.mk_Precursors.size());
+			exit(1);
+		}
+		++mi_PrecursorCount;
+ 		r_Precursor lr_Precursor = ar_Scan.mk_Precursors.first();
+ 		r_OligoHit lr_PrecursorHit = 
+			matchOligomer(lr_Precursor.md_Mz,
+						   md_PrecursorMassAccuracy, 
+						   mk_IonizationType, mi_MinDP, mi_MaxDP,
+						   mi_MinCharge, mi_MaxCharge, mi_IsotopeCount,
+						   mk_Ms1VariableLabel, mk_Ms1FixedLabel);
+		if (lr_PrecursorHit.mb_IsGood)
+		{
+			++mi_MatchedPrecursorCount;
+			foreach (r_Peak lr_Peak, lk_AllPeaks)
+			{
+				++mi_ExtractedMs2PeakCount;
+				r_OligoHit lr_Hit = 
+					matchOligomer(lr_Peak.md_PeakMz, 
+								md_ProductMassAccuracy, 
+								QSet<r_IonizationType::Enumeration>() 
+									<< lr_PrecursorHit.me_Ionization, 
+								1, (lr_PrecursorHit.mi_A + lr_PrecursorHit.mi_D),
+								mi_MinCharge, lr_PrecursorHit.mi_Charge, 
+								mi_IsotopeCount, mk_Ms2VariableLabel, mk_Ms2FixedLabel);
+				if (lr_Hit.mb_IsGood)
+				{
+					++mi_MatchedMs2PeakCount;
+					// oy, we found a MS2 peak hit
+					printf("%s / %s\n", 
+							lr_PrecursorHit.toString().toStdString().c_str(),
+							lr_Hit.toString().toStdString().c_str());
+				}
+			}
+		}
 // 		if (lr_PrecursorHit.mb_IsGood)
 // 		{
 // 			foreach (r_Peak lr_Peak, lk_AllPeaks)
@@ -239,7 +262,7 @@ void k_ChitoScanner::handleScan(r_Scan& ar_Scan)
 // 				}
 // 			}
 // 		}
-// 	}
+ 	}
 }
 
 
@@ -319,8 +342,8 @@ k_ChitoScanner::matchOligomer(double ad_Mz,
 					{
 						for (int li_Isotope = 0; li_Isotope < ai_IsotopeCount; ++li_Isotope)
 						{
-							QList<r_LabelType::Enumeration> lk_VariableLabelList = mk_VariableLabel.toList();
-							int li_LabelCombinationCount = 1 << (mk_VariableLabel.size());
+							QList<r_LabelType::Enumeration> lk_VariableLabelList = ak_VariableLabel.toList();
+							int li_LabelCombinationCount = 1 << (ak_VariableLabel.size());
 							for (int li_LabelCombination = 0; li_LabelCombination < li_LabelCombinationCount; ++li_LabelCombination)
 							{
 								QSet<r_LabelType::Enumeration> lk_EffectiveLabel;
@@ -329,7 +352,7 @@ k_ChitoScanner::matchOligomer(double ad_Mz,
 									if (((li_LabelCombination >> i) & 1) == 1)
 										lk_EffectiveLabel << lk_VariableLabelList[i];
 								}
-								lk_EffectiveLabel |= mk_FixedLabel;
+								lk_EffectiveLabel |= ak_FixedLabel;
 								double ld_Mz = calculateOligomerMass(
 									le_Ionization, li_DP, li_DA, 
 									li_Charge, li_Isotope, lk_EffectiveLabel);

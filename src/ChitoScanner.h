@@ -111,7 +111,7 @@ struct r_OligoHit
 			return QString("A%1D%2+%3 (%4%5), %7 (%8 ppm, next: %9 ppm)")
 				.arg(mi_A).arg(mi_D).arg(mi_Isotope).arg(mi_Charge)
 				.arg(gk_IonizationTypeLabel[me_Ionization])
-				.arg(lk_LabelString.join(","))
+				.arg(lk_LabelString.join(", "))
 				.arg(md_MassAccuracy).arg(md_NextMassAccuracy);
 		else
 			return QString("[no hit]");
@@ -149,10 +149,12 @@ public:
 					QSet<r_IonizationType::Enumeration> ak_IonizationType,
 					int ai_MinDP, int ai_MaxDP,
 					int ai_MinCharge, int ai_MaxCharge, int ai_IsotopeCount,
-					QSet<r_LabelType::Enumeration> ak_VariableLabel,
-					QSet<r_LabelType::Enumeration> ak_FixedLabel,
 					double ad_PrecursorMassAccuracy,
+					QSet<r_LabelType::Enumeration> ak_Ms1VariableLabel,
+					QSet<r_LabelType::Enumeration> ak_Ms1FixedLabel,
 					double ad_ProductMassAccuracy,
+					QSet<r_LabelType::Enumeration> ak_Ms2VariableLabel,
+					QSet<r_LabelType::Enumeration> ak_Ms2FixedLabel,
 					QTextStream* ak_CompositionFingerprintStream_ = NULL);
 	virtual ~k_ChitoScanner();
 	
@@ -185,10 +187,12 @@ protected:
 	int mi_MinCharge;
 	int mi_MaxCharge;
 	int mi_IsotopeCount;
-	QSet<r_LabelType::Enumeration> mk_VariableLabel;
-	QSet<r_LabelType::Enumeration> mk_FixedLabel;
 	double md_PrecursorMassAccuracy;
+	QSet<r_LabelType::Enumeration> mk_Ms1VariableLabel;
+	QSet<r_LabelType::Enumeration> mk_Ms1FixedLabel;
 	double md_ProductMassAccuracy;
+	QSet<r_LabelType::Enumeration> mk_Ms2VariableLabel;
+	QSet<r_LabelType::Enumeration> mk_Ms2FixedLabel;
 	QTextStream* mk_CompositionFingerprintStream_;
 	
 	QString ms_CurrentSpot;
@@ -197,12 +201,15 @@ protected:
 	int mi_ExtractedMs1PeakCount;
 	int mi_MatchedMs1PeakCount;
 	
+	int mi_PrecursorCount;
+	int mi_MatchedPrecursorCount;
+	
+	int mi_ExtractedMs2PeakCount;
+	int mi_MatchedMs2PeakCount;
+	
 	QList<double> mk_MS1MassAccuracies;
 	// this hash records the abundance of every (#A,#D) combination.
-	QHash<tk_IntPair, double> mk_DAAmounts;
-	// this list contains all MS1 product DPs, it's double so we can
-	// do mean and SD afterwards with calculateMeanAndStandardDeviation
-	QList<double> mk_DPs; 
+	QHash<tk_IntPair, double> mk_MS1Fingerprint;
 	
 	int mi_MS2PeakHitCount;
 	int mi_MS2PeakHitCountWithIsotope;
