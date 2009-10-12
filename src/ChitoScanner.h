@@ -155,7 +155,10 @@ public:
 					double ad_ProductMassAccuracy,
 					QSet<r_LabelType::Enumeration> ak_Ms2VariableLabel,
 					QSet<r_LabelType::Enumeration> ak_Ms2FixedLabel,
-					QTextStream* ak_CompositionFingerprintStream_ = NULL);
+					QTextStream* ak_CompositionFingerprintStream_ = NULL,
+					QTextStream* ak_MassRangeFingerprintStream_ = NULL,
+					QTextStream* ak_MassCollisionFingerprintStream_ = NULL,
+					QTextStream* ak_Ms2ProductsStream_ = NULL);
 	virtual ~k_ChitoScanner();
 	
 	// quantify takes a list of spectra files and a hash of (peptide => protein) entries
@@ -173,10 +176,12 @@ public:
 									  int ai_MinCharge, int ai_MaxCharge,
 									  int ai_IsotopeCount,
 									  QSet<r_LabelType::Enumeration> ak_VariableLabel,
-									  QSet<r_LabelType::Enumeration> ak_FixedLabel
+									  QSet<r_LabelType::Enumeration> ak_FixedLabel,
+									  int ai_AdditionalInfoMsLevel = 0
 								   );
 	virtual void calculateMeanAndStandardDeviation(
 		QList<double> ak_Values, double* ad_Mean_, double* ad_StandardDeviation_);
+	virtual QPair<double, double> massBounds(double ad_Mass, double ad_MassAccuracy);
 	
 protected:
 	double md_MinSnr;
@@ -194,6 +199,9 @@ protected:
 	QSet<r_LabelType::Enumeration> mk_Ms2VariableLabel;
 	QSet<r_LabelType::Enumeration> mk_Ms2FixedLabel;
 	QTextStream* mk_CompositionFingerprintStream_;
+	QTextStream* mk_MassRangeFingerprintStream_;
+	QTextStream* mk_MassCollisionFingerprintStream_;
+	QTextStream* mk_Ms2ProductsStream_;
 	
 	QString ms_CurrentSpot;
 
@@ -210,9 +218,12 @@ protected:
 	QList<double> mk_MS1MassAccuracies;
 	// this hash records the abundance of every (#A,#D) combination.
 	QHash<tk_IntPair, double> mk_MS1Fingerprint;
+	QHash<tk_IntPair, double> mk_MS1MassInRangeFingerprint;
+	QHash<tk_IntPair, double> mk_MS1MassCollisionFingerprint;
+	QHash<tk_IntPair, QHash<tk_IntPair, double> > mk_Ms2Products;
 	
 	int mi_MS2PeakHitCount;
 	int mi_MS2PeakHitCountWithIsotope;
 	
-	QHash<QString, QMap<double, r_OligoHit> > mk_TargetCache;
+	QHash<QString, QMultiMap<double, r_OligoHit> > mk_TargetCache;
 };

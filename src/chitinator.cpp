@@ -32,6 +32,8 @@ void printUsageAndExit()
 	printf("  --DA [float] (default: 0.66)\n");
 	printf("  --enzyme [string] (default: A|D)\n");
 	printf("      A, D and x can be used to specify residues (x: don't care)\n");
+	printf("  --maxIterations [int] (default: disabled)\n");
+	printf("      Stop after n iterations.\n");
 	printf("  --writeCompositionFingerprint [path]\n");
 	printf("      write CSV composition fingerprint to [path]\n");
 	exit(1);
@@ -65,6 +67,7 @@ int main(int ai_ArgumentCount, char** ac_Arguments__)
 	int li_DP = 800;
 	float lf_DA = 0.66;
 	QString ls_Enzyme = "A|D";
+	int li_MaxIterations = -1;
 	
 	RefPtr<QIODevice> lk_pCompositionFingerprintDevice;
 	RefPtr<QTextStream> lk_pCompositionFingerprintStream;
@@ -100,6 +103,14 @@ int main(int ai_ArgumentCount, char** ac_Arguments__)
 	if (li_Index > -1)
 	{
 		ls_Enzyme = QVariant(lk_Arguments[li_Index + 1]).toString();
+		lk_Arguments.removeAt(li_Index);
+		lk_Arguments.removeAt(li_Index);
+	}
+	
+	li_Index = lk_Arguments.indexOf("--maxIterations");
+	if (li_Index > -1)
+	{
+		li_MaxIterations = QVariant(lk_Arguments[li_Index + 1]).toInt();
 		lk_Arguments.removeAt(li_Index);
 		lk_Arguments.removeAt(li_Index);
 	}
@@ -166,8 +177,16 @@ int main(int ai_ArgumentCount, char** ac_Arguments__)
 		QList<RefPtr<k_Polymer> > lk_DigestablePolymers = lk_Polymers;
 		QList<RefPtr<k_Polymer> > lk_Products;
 		
+		int li_IterationCount = 0;
+		
 		while (!lk_DigestablePolymers.empty())
 		{
+			if (li_MaxIterations >= 0)
+			{
+				if (li_IterationCount >= li_MaxIterations)
+					break;
+			}
+			++li_IterationCount;
 			QList<RefPtr<k_Polymer> >::iterator lk_Iter = lk_DigestablePolymers.begin();
 			bool lb_FoundSite = false;
 			while (lk_Iter != lk_DigestablePolymers.end())

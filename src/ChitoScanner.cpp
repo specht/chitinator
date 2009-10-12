@@ -44,7 +44,10 @@ k_ChitoScanner::k_ChitoScanner(r_ScanType::Enumeration ae_ScanType,
 								double ad_ProductMassAccuracy,
 								QSet<r_LabelType::Enumeration> ak_Ms2VariableLabel,
 								QSet<r_LabelType::Enumeration> ak_Ms2FixedLabel,
-								QTextStream* ak_CompositionFingerprintStream_)
+								QTextStream* ak_CompositionFingerprintStream_,
+								QTextStream* ak_MassRangeFingerprintStream_,
+								QTextStream* ak_MassCollisionFingerprintStream_,
+								QTextStream* ak_Ms2ProductsStream_)
 	: k_ScanIterator(ae_ScanType, ak_MsLevels)
 	, md_MinSnr(ad_MinSnr)
 	, md_CropLower(ad_CropLower)
@@ -61,6 +64,17 @@ k_ChitoScanner::k_ChitoScanner(r_ScanType::Enumeration ae_ScanType,
 	, mk_Ms2VariableLabel(ak_Ms2VariableLabel)
 	, mk_Ms2FixedLabel(ak_Ms2FixedLabel)
 	, mk_CompositionFingerprintStream_(ak_CompositionFingerprintStream_)
+	, mk_MassRangeFingerprintStream_(ak_MassRangeFingerprintStream_)
+	, mk_MassCollisionFingerprintStream_(ak_MassCollisionFingerprintStream_)
+	, mk_Ms2ProductsStream_(ak_Ms2ProductsStream_)
+	, ms_CurrentSpot(QString())
+	, mi_ExtractedMs1PeakCount(0)
+	, mi_MatchedMs1PeakCount(0)
+	, mi_PrecursorCount(0)
+	, mi_MatchedPrecursorCount(0)
+	, mi_ExtractedMs2PeakCount(0)
+	, mi_MatchedMs2PeakCount(0)
+	
 {
 	// subtract fixed labels from var labels,
 	// because they're not really variable, huh?
@@ -82,11 +96,59 @@ k_ChitoScanner::~k_ChitoScanner()
 {
 	if (mk_CompositionFingerprintStream_)
 		mk_CompositionFingerprintStream_->flush();
+	
+	if (mk_MassRangeFingerprintStream_)
+		mk_MassRangeFingerprintStream_->flush();
+
+	if (mk_MassCollisionFingerprintStream_)
+		mk_MassCollisionFingerprintStream_->flush();
+	
+	if (mk_Ms2ProductsStream_)
+		mk_Ms2ProductsStream_->flush();
 }
 
 
 void k_ChitoScanner::scan(QStringList ak_SpectraFiles)
 {
+	if (mk_MassCollisionFingerprintStream_ || mk_MassRangeFingerprintStream_)
+	{
+		r_OligoHit lr_Hit = 
+			matchOligomer(200.0, 
+							md_PrecursorMassAccuracy, 
+							mk_IonizationType, mi_MinDP, mi_MaxDP,
+							mi_MinCharge, mi_MaxCharge, mi_IsotopeCount,
+							mk_Ms1VariableLabel, mk_Ms1FixedLabel, 1);
+		if (mk_MassRangeFingerprintStream_)
+		{
+			mk_MassRangeFingerprintStream_->setRealNumberNotation(QTextStream::FixedNotation);
+			*mk_MassRangeFingerprintStream_ << "Amount,A,D\n";
+			foreach (tk_IntPair lk_Pair, mk_MS1MassInRangeFingerprint.keys())
+			{
+				int li_A = lk_Pair.first;
+				int li_D = lk_Pair.second;
+				double ld_Amount = mk_MS1MassInRangeFingerprint[lk_Pair];
+				*mk_MassRangeFingerprintStream_<< ld_Amount << "," << li_A << "," << li_D << "\n";
+			}
+		}
+		
+		if (mk_MassCollisionFingerprintStream_)
+		{
+			mk_MassCollisionFingerprintStream_->setRealNumberNotation(QTextStream::FixedNotation);
+			*mk_MassCollisionFingerprintStream_ << "Amount,A,D\n";
+			foreach (tk_IntPair lk_Pair, mk_MS1MassCollisionFingerprint.keys())
+			{
+				int li_A = lk_Pair.first;
+				int li_D = lk_Pair.second;
+				double ld_Amount = mk_MS1MassCollisionFingerprint[lk_Pair];
+				*mk_MassCollisionFingerprintStream_ << ld_Amount << "," << li_A << "," << li_D << "\n";
+			}
+		}
+		
+	}
+	
+	mk_MS1Fingerprint.clear();
+	mk_Ms2Products.clear();
+	
 	// parse all bands
 	foreach (QString ls_Path, ak_SpectraFiles)
 	{
@@ -95,7 +157,6 @@ void k_ChitoScanner::scan(QStringList ak_SpectraFiles)
 		mk_MS1MassAccuracies.clear();
 		mi_MS2PeakHitCount = 0;
 		mi_MS2PeakHitCountWithIsotope = 0;
-		mk_MS1Fingerprint.clear();
 		mi_ExtractedMs1PeakCount = 0;
 		mi_MatchedMs1PeakCount = 0;
 		mi_PrecursorCount = 0;
@@ -120,6 +181,22 @@ void k_ChitoScanner::scan(QStringList ak_SpectraFiles)
 				int li_D = lk_Pair.second;
 				double ld_Amount = mk_MS1Fingerprint[lk_Pair];
 				*mk_CompositionFingerprintStream_ << ld_Amount << "," << li_A << "," << li_D << "\n";
+			}
+		}
+		
+		if (mk_Ms2ProductsStream_)
+		{
+			mk_Ms2ProductsStream_->setRealNumberNotation(QTextStream::FixedNotation);
+			*mk_Ms2ProductsStream_ << "Amount,Precursor A,Precursor D,Product A,Product D\n";
+			foreach (tk_IntPair lk_PrecursorPair, mk_Ms2Products.keys())
+			{
+				foreach (tk_IntPair lk_Pair, mk_Ms2Products[lk_PrecursorPair].keys())
+					*mk_Ms2ProductsStream_
+						<< mk_Ms2Products[lk_PrecursorPair][lk_Pair] << ","
+						<< lk_PrecursorPair.first << "," 
+						<< lk_PrecursorPair.second << ","
+						<< lk_Pair.first << ","
+						<< lk_Pair.second << endl;
 			}
 		}
 		
@@ -231,9 +308,17 @@ void k_ChitoScanner::handleScan(r_Scan& ar_Scan)
 				{
 					++mi_MatchedMs2PeakCount;
 					// oy, we found a MS2 peak hit
-					printf("%s / %s\n", 
-							lr_PrecursorHit.toString().toStdString().c_str(),
-							lr_Hit.toString().toStdString().c_str());
+					if (lr_Hit.mi_A <= lr_PrecursorHit.mi_A &&
+						lr_Hit.mi_D <= lr_PrecursorHit.mi_D)
+					{
+						tk_IntPair lk_PrecursorKey = tk_IntPair(lr_PrecursorHit.mi_A, lr_PrecursorHit.mi_D);
+						tk_IntPair lk_ProductKey = tk_IntPair(lr_Hit.mi_A, lr_Hit.mi_D);
+						if (!mk_Ms2Products.contains(lk_PrecursorKey))
+							mk_Ms2Products[lk_PrecursorKey] = QHash<tk_IntPair, double>();
+						if (!mk_Ms2Products[lk_PrecursorKey].contains(lk_ProductKey))
+							mk_Ms2Products[lk_PrecursorKey][lk_ProductKey] = 0.0;
+						mk_Ms2Products[lk_PrecursorKey][lk_ProductKey] += lr_Peak.md_PeakIntensity;
+					}
 				}
 			}
 		}
@@ -297,7 +382,8 @@ k_ChitoScanner::matchOligomer(double ad_Mz,
 							   int ai_MinCharge, int ai_MaxCharge,
 							   int ai_IsotopeCount,
 							   QSet<r_LabelType::Enumeration> ak_VariableLabel,
-							   QSet<r_LabelType::Enumeration> ak_FixedLabel)
+							   QSet<r_LabelType::Enumeration> ak_FixedLabel,
+							   int ai_AdditionalInfoMsLevel)
 {
 	// if ai_Charge < 1, then charge is not defined
 	QString ls_Result = "(no match)";
@@ -330,14 +416,22 @@ k_ChitoScanner::matchOligomer(double ad_Mz,
 		
 	if (!mk_TargetCache.contains(ls_HashKey))
 	{
-		foreach (r_IonizationType::Enumeration le_Ionization, ak_IonizationType)
+		QHash<tk_IntPair, QList<double> > lk_MzForComposition;
+		if (ai_AdditionalInfoMsLevel == 1)
 		{
-			for (int li_DP = ai_MinDP; li_DP <= ai_MaxDP; ++li_DP)
+			mk_MS1MassInRangeFingerprint.clear();
+			mk_MS1MassCollisionFingerprint.clear();
+		}
+		for (int li_DP = ai_MinDP; li_DP <= ai_MaxDP; ++li_DP)
+		{
+			for (int li_DA = 0; li_DA <= li_DP; ++li_DA)
 			{
-				for (int li_DA = 0; li_DA <= li_DP; ++li_DA)
+				int li_A = li_DA;
+				int li_D = li_DP - li_DA;
+				int li_PossibilityCount = 0;
+				int li_MassInRangeCount = 0;
+				foreach (r_IonizationType::Enumeration le_Ionization, ak_IonizationType)
 				{
-					int li_A = li_DA;
-					int li_D = li_DP - li_DA;
 					for (int li_Charge = ai_MinCharge; li_Charge <= ai_MaxCharge; ++li_Charge)
 					{
 						for (int li_Isotope = 0; li_Isotope < ai_IsotopeCount; ++li_Isotope)
@@ -356,23 +450,75 @@ k_ChitoScanner::matchOligomer(double ad_Mz,
 								double ld_Mz = calculateOligomerMass(
 									le_Ionization, li_DP, li_DA, 
 									li_Charge, li_Isotope, lk_EffectiveLabel);
-								mk_TargetCache[ls_HashKey][ld_Mz] = 
+								mk_TargetCache[ls_HashKey].insert(ld_Mz,
 									r_OligoHit(le_Ionization, li_A, li_D, 
 												li_Charge, li_Isotope, 
-												lk_EffectiveLabel, ld_Mz);
+												lk_EffectiveLabel, ld_Mz));
+								tk_IntPair lk_Composition(li_A, li_D);
+								if (!lk_MzForComposition.contains(lk_Composition))
+									lk_MzForComposition[lk_Composition] = QList<double>();
+								lk_MzForComposition[lk_Composition] << ld_Mz;
+								++li_PossibilityCount;
+								if (ld_Mz >= 200.0 && ld_Mz <= 3000.0)
+								{
+									++li_MassInRangeCount;
+								}
 							}
 						}
 					}
 				}
+				double ld_Chance = (double)li_MassInRangeCount / li_PossibilityCount;
+				mk_MS1MassInRangeFingerprint[tk_IntPair(li_A, li_D)] = ld_Chance;
+			}
+		}
+		// determine mass collision fingerprint
+		if (ai_AdditionalInfoMsLevel == 1)
+		{
+			foreach (tk_IntPair lk_Composition, lk_MzForComposition.keys())
+			{
+				double ld_UsableLengthSum = 0.0;
+				foreach (double ld_Mz, lk_MzForComposition[lk_Composition])
+				{
+					QMultiMap<double, r_OligoHit>::const_iterator lk_Iter = mk_TargetCache[ls_HashKey].constFind(ld_Mz);
+					QList<double> lk_ProbeMz;
+					if (lk_Iter != mk_TargetCache[ls_HashKey].constBegin())
+					{
+						QMultiMap<double, r_OligoHit>::const_iterator lk_PrevIter = lk_Iter;
+						--lk_PrevIter;
+						lk_ProbeMz << lk_PrevIter.key();
+					}
+					if (lk_Iter != mk_TargetCache[ls_HashKey].constEnd())
+					{
+						QMultiMap<double, r_OligoHit>::const_iterator lk_NextIter = lk_Iter;
+						++lk_NextIter;
+						lk_ProbeMz << lk_NextIter.key();
+					}
+					QPair<double, double> lk_TargetSpan = massBounds(ld_Mz, md_PrecursorMassAccuracy);
+					double ld_OriginalLength = lk_TargetSpan.second - lk_TargetSpan.first;
+					foreach (double ld_ProbeMz, lk_ProbeMz)
+					{
+						QPair<double, double> lk_ProbeMz = massBounds(ld_ProbeMz, md_PrecursorMassAccuracy);
+						if (lk_ProbeMz.first < lk_TargetSpan.second && lk_ProbeMz.second > lk_TargetSpan.second)
+							lk_TargetSpan.second = lk_ProbeMz.first;
+						if (lk_ProbeMz.second > lk_TargetSpan.first && lk_ProbeMz.first < lk_TargetSpan.first)
+							lk_TargetSpan.first = lk_ProbeMz.second;
+					}
+					double ld_NewLength = lk_TargetSpan.second - lk_TargetSpan.first;
+					if (ld_NewLength < 0.0)
+						ld_NewLength = 0.0;
+					double ld_UsableLength = ld_NewLength / ld_OriginalLength;
+					ld_UsableLengthSum += ld_UsableLength;
+				}
+				mk_MS1MassCollisionFingerprint[lk_Composition] = ld_UsableLengthSum / lk_MzForComposition[lk_Composition].size();
 			}
 		}
 	}
 	
 	r_OligoHit lr_Hit;
-	QMap<double, r_OligoHit> lk_Targets = mk_TargetCache[ls_HashKey];
+	QMultiMap<double, r_OligoHit> lk_Targets = mk_TargetCache[ls_HashKey];
 	double ld_MinError = 1e20;
-	QMap<double, r_OligoHit>::const_iterator lk_BestIter;
-	QMap<double, r_OligoHit>::const_iterator lk_Iter = lk_Targets.constBegin();
+	QMultiMap<double, r_OligoHit>::const_iterator lk_BestIter;
+	QMultiMap<double, r_OligoHit>::const_iterator lk_Iter = lk_Targets.constBegin();
 	for (; lk_Iter != lk_Targets.constEnd(); ++lk_Iter)
 	{
 		double ld_Mz = lk_Iter.key();
@@ -427,4 +573,11 @@ void k_ChitoScanner::calculateMeanAndStandardDeviation(QList<double> ak_Values, 
 	
 	*ad_Mean_ = ld_Mean;
 	*ad_StandardDeviation_ = ld_StandardDeviation;
+}
+
+
+QPair<double, double> k_ChitoScanner::massBounds(double ad_Mass, double ad_MassAccuracy)
+{
+	double ld_Error = ad_Mass * ad_MassAccuracy / 1000000.0;
+	return QPair<double, double>(ad_Mass - ld_Error, ad_Mass + ld_Error);
 }
