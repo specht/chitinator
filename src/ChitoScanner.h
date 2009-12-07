@@ -97,7 +97,7 @@ struct r_OligoHit
 	{
 	}
 	
-	QString toString()
+	QString toString() const
 	{
 		QList<r_LabelType::Enumeration> lk_LabelList = mk_Label.toList();
 		qSort(lk_LabelList.begin(), lk_LabelList.end());
@@ -117,13 +117,29 @@ struct r_OligoHit
 			return QString("[no hit]");
 	}
 	
-	QString compositionString()
+	QString compositionString() const
 	{
 		if (mb_IsGood)
 			return QString("A%1D%2%3")
 				.arg(mi_A).arg(mi_D).arg(mk_Label.contains(r_LabelType::ReducingEndLabel2Da) ? "*" : "");
 		else
 			return QString("[no hit]");
+	}
+	
+	QString infoString() const
+	{
+		QList<r_LabelType::Enumeration> lk_LabelList = mk_Label.toList();
+		qSort(lk_LabelList.begin(), lk_LabelList.end());
+		QStringList lk_LabelString;
+		foreach (r_LabelType::Enumeration le_Label, lk_LabelList)
+			lk_LabelString << gk_LabelLabel[le_Label];
+		if (lk_LabelString.empty())
+			lk_LabelString << "(unlabeled)";
+		
+		return QString("A%1D%2+%3 (%4%5), %7")
+			.arg(mi_A).arg(mi_D).arg(mi_Isotope).arg(mi_Charge)
+			.arg(gk_IonizationTypeLabel[me_Ionization])
+			.arg(lk_LabelString.join(", "));
 	}
 	
 	r_IonizationType::Enumeration me_Ionization;

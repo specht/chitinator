@@ -471,6 +471,10 @@ k_ChitoScanner::matchOligomer(double ad_Mz,
 				mk_MS1MassInRangeFingerprint[tk_IntPair(li_A, li_D)] = ld_Chance;
 			}
 		}
+/*		printf("%s\n", ls_HashKey.toStdString().c_str());
+		QMultiMap<double, r_OligoHit>::const_iterator lk_Iter = mk_TargetCache[ls_HashKey].constBegin();
+		for (; lk_Iter != mk_TargetCache[ls_HashKey].constEnd(); ++lk_Iter)
+			printf("%10.4f: %s\n", lk_Iter.key(), lk_Iter.value().infoString().toStdString().c_str());*/
 		// determine mass collision fingerprint
 		if (ai_AdditionalInfoMsLevel == 1)
 		{
