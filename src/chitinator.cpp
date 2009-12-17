@@ -192,7 +192,17 @@ int main(int ai_ArgumentCount, char** ac_Arguments__)
 			while (lk_Iter != lk_DigestablePolymers.end())
 			{
 				RefPtr<k_Polymer> lk_pPolymer = *lk_Iter;
-				for (int k = 0; k < lk_pPolymer->mi_Length; ++k)
+                QList<int> lk_Permutation;
+                for (int k = 0; k < lk_pPolymer->mi_Length; ++k)
+                    lk_Permutation << k;
+                for (int k = 0; k < lk_pPolymer->mi_Length; ++k)
+                {
+                    int li_Position = rand() % lk_pPolymer->mi_Length;
+                    int li_Temp = lk_Permutation[li_Position];
+                    lk_Permutation[li_Position] = lk_Permutation[k];
+                    lk_Permutation[k] = li_Temp;
+                }
+                foreach (int k, lk_Permutation)
 				{
 					if (lk_Enzyme.canCutPolymerAt(lk_pPolymer.get_Pointer(), k))
 					{
