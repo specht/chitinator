@@ -35,6 +35,7 @@ k_ChitoScanner::k_ChitoScanner(r_ScanType::Enumeration ae_ScanType,
 								double ad_MinSnr,
 								double ad_CropLower,
 								QSet<r_IonizationType::Enumeration> ak_IonizationType,
+                                r_AcetylationType::Enumeration ae_AcetylationType,
 								int ai_MinDP, int ai_MaxDP,
 								int ai_MinCharge, int ai_MaxCharge, 
 								int ai_IsotopeCount, 
@@ -52,6 +53,7 @@ k_ChitoScanner::k_ChitoScanner(r_ScanType::Enumeration ae_ScanType,
 	, md_MinSnr(ad_MinSnr)
 	, md_CropLower(ad_CropLower)
 	, mk_IonizationType(ak_IonizationType)
+	, me_AcetylationType(ae_AcetylationType)
 	, mi_MinDP(ai_MinDP)
 	, mi_MaxDP(ai_MaxDP)
 	, mi_MinCharge(ai_MinCharge)
@@ -112,16 +114,19 @@ void k_ChitoScanner::scan(QStringList ak_SpectraFiles)
 {
 	if (mk_MassCollisionFingerprintStream_ || mk_MassRangeFingerprintStream_)
 	{
+        /*
 		r_OligoHit lr_Hit = 
 			matchOligomer(200.0, 
 							md_PrecursorMassAccuracy, 
-							mk_IonizationType, mi_MinDP, mi_MaxDP,
+							mk_IonizationType, me_AcetylationType, 
+							mi_MinDP, mi_MaxDP,
 							mi_MinCharge, mi_MaxCharge, mi_IsotopeCount,
 							mk_Ms1VariableLabel, mk_Ms1FixedLabel, 1);
+                            */
 		if (mk_MassRangeFingerprintStream_)
 		{
 			mk_MassRangeFingerprintStream_->setRealNumberNotation(QTextStream::FixedNotation);
-			*mk_MassRangeFingerprintStream_ << "Amount,A,D\n";
+			*mk_MassRangeFingerprintStream_ << QString("Amount,A,%1\n").arg(gk_AcetylationChar[(int)me_AcetylationType]);
 			foreach (tk_IntPair lk_Pair, mk_MS1MassInRangeFingerprint.keys())
 			{
 				int li_A = lk_Pair.first;
@@ -134,7 +139,7 @@ void k_ChitoScanner::scan(QStringList ak_SpectraFiles)
 		if (mk_MassCollisionFingerprintStream_)
 		{
 			mk_MassCollisionFingerprintStream_->setRealNumberNotation(QTextStream::FixedNotation);
-			*mk_MassCollisionFingerprintStream_ << "Amount,A,D\n";
+			*mk_MassCollisionFingerprintStream_ << QString("Amount,A,%1\n").arg(gk_AcetylationChar[(int)me_AcetylationType]);
 			foreach (tk_IntPair lk_Pair, mk_MS1MassCollisionFingerprint.keys())
 			{
 				int li_A = lk_Pair.first;
@@ -174,7 +179,7 @@ void k_ChitoScanner::scan(QStringList ak_SpectraFiles)
 		if (mk_CompositionFingerprintStream_)
 		{
 			mk_CompositionFingerprintStream_->setRealNumberNotation(QTextStream::FixedNotation);
-			*mk_CompositionFingerprintStream_ << "Amount,A,D\n";
+			*mk_CompositionFingerprintStream_ << QString("Amount,A,%1\n").arg(gk_AcetylationChar[(int)me_AcetylationType]);
 			foreach (tk_IntPair lk_Pair, mk_MS1Fingerprint.keys())
 			{
 				int li_A = lk_Pair.first;
@@ -187,7 +192,7 @@ void k_ChitoScanner::scan(QStringList ak_SpectraFiles)
 		if (mk_Ms2ProductsStream_)
 		{
 			mk_Ms2ProductsStream_->setRealNumberNotation(QTextStream::FixedNotation);
-			*mk_Ms2ProductsStream_ << "Amount,Precursor A,Precursor D,Product A,Product D\n";
+			*mk_Ms2ProductsStream_ << QString("Amount,Precursor A,Precursor %1,Product A,Product %1\n").arg(gk_AcetylationChar[(int)me_AcetylationType]);
 			foreach (tk_IntPair lk_PrecursorPair, mk_Ms2Products.keys())
 			{
 				foreach (tk_IntPair lk_Pair, mk_Ms2Products[lk_PrecursorPair].keys())
@@ -220,8 +225,9 @@ void k_ChitoScanner::scan(QStringList ak_SpectraFiles)
 }
 
 
-void k_ChitoScanner::handleScan(r_Scan& ar_Scan)
+void k_ChitoScanner::handleScan(r_Scan& ar_Scan, bool& ab_Continue)
 {
+    ab_Continue = true;
 	// find all peaks in this spectrum
 	QList<r_Peak> lk_AllPeaks = k_ScanIterator::findAllPeaks(ar_Scan.mr_Spectrum);
 	
@@ -259,7 +265,8 @@ void k_ChitoScanner::handleScan(r_Scan& ar_Scan)
 			r_OligoHit lr_Hit = 
 				matchOligomer(lr_Peak.md_PeakMz, 
 							   md_PrecursorMassAccuracy, 
-							   mk_IonizationType, mi_MinDP, mi_MaxDP,
+							   mk_IonizationType, me_AcetylationType,
+                               mi_MinDP, mi_MaxDP,
 							   mi_MinCharge, mi_MaxCharge, mi_IsotopeCount,
 							   mk_Ms1VariableLabel, mk_Ms1FixedLabel);
 			if (lr_Hit.mb_IsGood)
@@ -287,7 +294,8 @@ void k_ChitoScanner::handleScan(r_Scan& ar_Scan)
  		r_OligoHit lr_PrecursorHit = 
 			matchOligomer(lr_Precursor.md_Mz,
 						   md_PrecursorMassAccuracy, 
-						   mk_IonizationType, mi_MinDP, mi_MaxDP,
+						   mk_IonizationType, me_AcetylationType,
+                           mi_MinDP, mi_MaxDP,
 						   mi_MinCharge, mi_MaxCharge, mi_IsotopeCount,
 						   mk_Ms1VariableLabel, mk_Ms1FixedLabel);
 		if (lr_PrecursorHit.mb_IsGood)
@@ -301,6 +309,7 @@ void k_ChitoScanner::handleScan(r_Scan& ar_Scan)
 								md_ProductMassAccuracy, 
 								QSet<r_IonizationType::Enumeration>() 
 									<< lr_PrecursorHit.me_Ionization, 
+                                me_AcetylationType,
 								1, (lr_PrecursorHit.mi_A + lr_PrecursorHit.mi_D),
 								mi_MinCharge, lr_PrecursorHit.mi_Charge, 
 								mi_IsotopeCount, mk_Ms2VariableLabel, mk_Ms2FixedLabel);
@@ -358,13 +367,14 @@ void k_ChitoScanner::progressFunction(QString as_ScanId, bool)
 
 								   
 double k_ChitoScanner::calculateOligomerMass(r_IonizationType::Enumeration ae_Ionization, 
-											  int ai_DP, int ai_DA, 
-											  int ai_Charge, int ai_Isotope, 
-											  QSet<r_LabelType::Enumeration> ak_ActiveLabel)
+                                             r_AcetylationType::Enumeration ae_AcetylationType,
+                                             int ai_DP, int ai_DA, 
+                                             int ai_Charge, int ai_Isotope, 
+                                             QSet<r_LabelType::Enumeration> ak_ActiveLabel)
 {
 	int li_A = ai_DA;
 	int li_D = ai_DP - ai_DA;
-	double ld_Mass = MASS_A * li_A + MASS_D * li_D + MASS_WATER + 
+	double ld_Mass = MASS_A * li_A + (ae_AcetylationType == r_AcetylationType::Deacetylation ? MASS_D : MASS_R) * li_D + MASS_WATER + 
 		gk_IonizationTypeMass[ae_Ionization] * ai_Charge + 
 		MASS_NEUTRON * ai_Isotope;
 	foreach (r_LabelType::Enumeration le_Label, ak_ActiveLabel)
@@ -376,14 +386,15 @@ double k_ChitoScanner::calculateOligomerMass(r_IonizationType::Enumeration ae_Io
 
 r_OligoHit 
 k_ChitoScanner::matchOligomer(double ad_Mz,
-							   double ad_MassAccuracy,
-							   QSet<r_IonizationType::Enumeration> ak_IonizationType,
-							   int ai_MinDP, int ai_MaxDP,
-							   int ai_MinCharge, int ai_MaxCharge,
-							   int ai_IsotopeCount,
-							   QSet<r_LabelType::Enumeration> ak_VariableLabel,
-							   QSet<r_LabelType::Enumeration> ak_FixedLabel,
-							   int ai_AdditionalInfoMsLevel)
+							  double ad_MassAccuracy,
+							  QSet<r_IonizationType::Enumeration> ak_IonizationType,
+                              r_AcetylationType::Enumeration ae_AcetylationType,
+                              int ai_MinDP, int ai_MaxDP,
+							  int ai_MinCharge, int ai_MaxCharge,
+							  int ai_IsotopeCount,
+							  QSet<r_LabelType::Enumeration> ak_VariableLabel,
+							  QSet<r_LabelType::Enumeration> ak_FixedLabel,
+							  int ai_AdditionalInfoMsLevel)
 {
 	// if ai_Charge < 1, then charge is not defined
 	QString ls_Result = "(no match)";
@@ -448,12 +459,13 @@ k_ChitoScanner::matchOligomer(double ad_Mz,
 								}
 								lk_EffectiveLabel |= ak_FixedLabel;
 								double ld_Mz = calculateOligomerMass(
-									le_Ionization, li_DP, li_DA, 
+									le_Ionization, ae_AcetylationType, li_DP, li_DA, 
 									li_Charge, li_Isotope, lk_EffectiveLabel);
 								mk_TargetCache[ls_HashKey].insert(ld_Mz,
-									r_OligoHit(le_Ionization, li_A, li_D, 
-												li_Charge, li_Isotope, 
-												lk_EffectiveLabel, ld_Mz));
+									r_OligoHit(le_Ionization, ae_AcetylationType,
+                                               li_A, li_D, 
+                                               li_Charge, li_Isotope, 
+                                               lk_EffectiveLabel, ld_Mz));
 								tk_IntPair lk_Composition(li_A, li_D);
 								if (!lk_MzForComposition.contains(lk_Composition))
 									lk_MzForComposition[lk_Composition] = QList<double>();

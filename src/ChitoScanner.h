@@ -28,10 +28,13 @@ along with SimQuant.  If not, see <http://www.gnu.org/licenses/>.
 #define MASS_NEUTRON 1.002
 #define MASS_D 161.0689
 #define MASS_A 203.0794
+#define MASS_R 206.098203
 
 
 typedef QPair<int, int> tk_IntPair;
 const tk_IntPair gk_Undefined(-1, -1);
+
+const char gk_AcetylationChar[2] = {'D', 'R'};
 
 
 struct r_IonizationType
@@ -41,6 +44,16 @@ struct r_IonizationType
 		Proton = 0,
 		Sodium
 	};
+};
+
+
+struct r_AcetylationType
+{
+    enum Enumeration
+    {
+        Deacetylation = 0,
+        Reacetylation
+    };
 };
 
 
@@ -63,7 +76,7 @@ extern QHash<r_LabelType::Enumeration, QString> gk_LabelLabel;
 struct r_OligoHit
 {
 	r_OligoHit(r_IonizationType::Enumeration ae_Ionization = r_IonizationType::Proton,
-				int ai_A = 0, int ai_D = 0, 
+				r_AcetylationType::Enumeration ae_AcetylationType = r_AcetylationType::Deacetylation, int ai_A = 0, int ai_D = 0, 
 				int ai_Charge = 0, int ai_Isotope = 0,
 				QSet<r_LabelType::Enumeration> ak_Label = QSet<r_LabelType::Enumeration>(),
 				double ad_Mz = 0.0,
@@ -71,6 +84,7 @@ struct r_OligoHit
 				double ad_NextMassAccuracy = 0.0,
 				bool ab_IsGood = false)
 		: me_Ionization(ae_Ionization)
+		, me_AcetylationType(ae_AcetylationType)
 		, mi_A(ai_A)
 		, mi_D(ai_D)
 		, mi_Charge(ai_Charge)
@@ -85,6 +99,7 @@ struct r_OligoHit
 	
 	r_OligoHit(const r_OligoHit& ar_Other)
 		: me_Ionization(ar_Other.me_Ionization)
+		, me_AcetylationType(ar_Other.me_AcetylationType)
 		, mi_A(ar_Other.mi_A)
 		, mi_D(ar_Other.mi_D)
 		, mi_Charge(ar_Other.mi_Charge)
@@ -108,8 +123,8 @@ struct r_OligoHit
 			lk_LabelString << "(unlabeled)";
 		
 		if (mb_IsGood)
-			return QString("A%1D%2+%3 (%4%5), %7 (%8 ppm, next: %9 ppm)")
-				.arg(mi_A).arg(mi_D).arg(mi_Isotope).arg(mi_Charge)
+			return QString("A%1%2%3+%4 (%5%6), %8 (%9 ppm, next: %10 ppm)")
+				.arg(mi_A).arg(gk_AcetylationChar[(int)me_AcetylationType]).arg(mi_D).arg(mi_Isotope).arg(mi_Charge)
 				.arg(gk_IonizationTypeLabel[me_Ionization])
 				.arg(lk_LabelString.join(", "))
 				.arg(md_MassAccuracy).arg(md_NextMassAccuracy);
@@ -136,13 +151,14 @@ struct r_OligoHit
 		if (lk_LabelString.empty())
 			lk_LabelString << "(unlabeled)";
 		
-		return QString("A%1D%2+%3 (%4%5), %7")
-			.arg(mi_A).arg(mi_D).arg(mi_Isotope).arg(mi_Charge)
+		return QString("A%1%2%3+%4 (%5%6), %8")
+			.arg(mi_A).arg(gk_AcetylationChar[(int)me_AcetylationType]).arg(mi_D).arg(mi_Isotope).arg(mi_Charge)
 			.arg(gk_IonizationTypeLabel[me_Ionization])
 			.arg(lk_LabelString.join(", "));
 	}
 	
 	r_IonizationType::Enumeration me_Ionization;
+    r_AcetylationType::Enumeration me_AcetylationType;
 	int mi_A;
 	int mi_D;
 	int mi_Charge;
@@ -159,35 +175,38 @@ class k_ChitoScanner: public k_ScanIterator
 {
 public:
 	k_ChitoScanner(r_ScanType::Enumeration ae_ScanType,
-					QList<tk_IntPair> ak_MsLevels,
-					double ad_MinSnr,
-					double ad_CropLower,
-					QSet<r_IonizationType::Enumeration> ak_IonizationType,
-					int ai_MinDP, int ai_MaxDP,
-					int ai_MinCharge, int ai_MaxCharge, int ai_IsotopeCount,
-					double ad_PrecursorMassAccuracy,
-					QSet<r_LabelType::Enumeration> ak_Ms1VariableLabel,
-					QSet<r_LabelType::Enumeration> ak_Ms1FixedLabel,
-					double ad_ProductMassAccuracy,
-					QSet<r_LabelType::Enumeration> ak_Ms2VariableLabel,
-					QSet<r_LabelType::Enumeration> ak_Ms2FixedLabel,
-					QTextStream* ak_CompositionFingerprintStream_ = NULL,
-					QTextStream* ak_MassRangeFingerprintStream_ = NULL,
-					QTextStream* ak_MassCollisionFingerprintStream_ = NULL,
-					QTextStream* ak_Ms2ProductsStream_ = NULL);
+                   QList<tk_IntPair> ak_MsLevels,
+                   double ad_MinSnr,
+                   double ad_CropLower,
+                   QSet<r_IonizationType::Enumeration> ak_IonizationType,
+                   r_AcetylationType::Enumeration ae_AcetylationType,
+                   int ai_MinDP, int ai_MaxDP,
+                   int ai_MinCharge, int ai_MaxCharge, int ai_IsotopeCount,
+                   double ad_PrecursorMassAccuracy,
+                   QSet<r_LabelType::Enumeration> ak_Ms1VariableLabel,
+                   QSet<r_LabelType::Enumeration> ak_Ms1FixedLabel,
+                   double ad_ProductMassAccuracy,
+                   QSet<r_LabelType::Enumeration> ak_Ms2VariableLabel,
+                   QSet<r_LabelType::Enumeration> ak_Ms2FixedLabel,
+                   QTextStream* ak_CompositionFingerprintStream_ = NULL,
+                   QTextStream* ak_MassRangeFingerprintStream_ = NULL,
+                   QTextStream* ak_MassCollisionFingerprintStream_ = NULL,
+                   QTextStream* ak_Ms2ProductsStream_ = NULL);
 	virtual ~k_ChitoScanner();
 	
 	// quantify takes a list of spectra files and a hash of (peptide => protein) entries
 	virtual void scan(QStringList ak_SpectraFiles);
-	virtual void handleScan(r_Scan& ar_Scan);
+	virtual void handleScan(r_Scan& ar_Scan, bool& ab_Continue);
 	virtual void progressFunction(QString as_ScanId, bool ab_InterestingScan);
 	virtual double calculateOligomerMass(r_IonizationType::Enumeration ae_Ionization, 
+                                          r_AcetylationType::Enumeration ae_AcetylationType,
 										  int ai_DP, int ai_DA, 
 										  int ai_Charge, int ai_Isotope, 
 										  QSet<r_LabelType::Enumeration> ak_ActiveLabel);
 	virtual r_OligoHit matchOligomer(double ad_Mz,
 									  double ad_MassAccuracy,
 									  QSet<r_IonizationType::Enumeration> ak_IonizationType,
+                                      r_AcetylationType::Enumeration ae_AcetylationType,
 									  int ai_MinDP, int ai_MaxDP,
 									  int ai_MinCharge, int ai_MaxCharge,
 									  int ai_IsotopeCount,
@@ -203,6 +222,7 @@ protected:
 	double md_MinSnr;
 	double md_CropLower;
 	QSet<r_IonizationType::Enumeration> mk_IonizationType;
+    r_AcetylationType::Enumeration me_AcetylationType;
 	int mi_MinDP;
 	int mi_MaxDP;
 	int mi_MinCharge;

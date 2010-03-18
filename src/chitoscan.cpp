@@ -32,6 +32,7 @@ void printUsageAndExit()
 	printf("  --cropLower [float] (default: 0.05)\n");
 	printf("  --ionizationType [comma-separated ids] (default: 0)\n");
 	printf("      (0: H+, 1: Na+)\n");
+    printf("  --acetylationType <D|R> (default: D)\n");
 	printf("  --minDP [int] (default: 1)\n");
 	printf("  --maxDP [int] (default: 10)\n");
 	printf("  --minCharge [int] (default: 1)\n");
@@ -113,6 +114,7 @@ int main(int ai_ArgumentCount, char** ac_Arguments__)
 
 	QSet<r_IonizationType::Enumeration> lk_IonizationType = 
 		QSet<r_IonizationType::Enumeration>() << r_IonizationType::Proton;
+    r_AcetylationType::Enumeration le_AcetylationType = r_AcetylationType::Deacetylation;
 	double ld_MinSnr = 2.0;
 	double ld_CropLower = 0.05;
 	int li_MinDP = 1;
@@ -189,6 +191,23 @@ int main(int ai_ArgumentCount, char** ac_Arguments__)
 		}
 	}
 	
+    li_Index = lk_Arguments.indexOf("--acetylationType");
+    if (li_Index > -1)
+    {
+        QString ls_AcetylationType = QVariant(lk_Arguments[li_Index + 1]).toString();
+        lk_Arguments.removeAt(li_Index);
+        lk_Arguments.removeAt(li_Index);
+        if (ls_AcetylationType == "D")
+            le_AcetylationType = r_AcetylationType::Deacetylation;
+        else if (ls_AcetylationType == "R")
+            le_AcetylationType = r_AcetylationType::Reacetylation;
+        else
+        {
+            printf("Error: Unknown acetylation type %s.\n", ls_AcetylationType.trimmed().toStdString().c_str());
+            exit(1);
+        }
+    }
+    
 	li_Index = lk_Arguments.indexOf("--minDP");
 	if (li_Index > -1)
 	{
@@ -332,7 +351,8 @@ int main(int ai_ArgumentCount, char** ac_Arguments__)
 	k_ChitoScanner lk_ChitoScanner(r_ScanType::All, 
 									QList<tk_IntPair>() << tk_IntPair(1, 10000),
 									ld_MinSnr, ld_CropLower,
-									lk_IonizationType, li_MinDP, li_MaxDP,
+									lk_IonizationType, le_AcetylationType,
+									li_MinDP, li_MaxDP,
 									li_MinCharge, li_MaxCharge, li_IsotopeCount,
 									ld_PrecursorMassAccuracy,
 									lk_Ms1VariableLabel, lk_Ms1FixedLabel,
