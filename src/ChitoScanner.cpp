@@ -114,7 +114,7 @@ void k_ChitoScanner::scan(QStringList ak_SpectraFiles)
 {
 	if (mk_MassCollisionFingerprintStream_ || mk_MassRangeFingerprintStream_)
 	{
-        /*
+        // this is for the fingerprints, don't delete it
 		r_OligoHit lr_Hit = 
 			matchOligomer(200.0, 
 							md_PrecursorMassAccuracy, 
@@ -122,7 +122,6 @@ void k_ChitoScanner::scan(QStringList ak_SpectraFiles)
 							mi_MinDP, mi_MaxDP,
 							mi_MinCharge, mi_MaxCharge, mi_IsotopeCount,
 							mk_Ms1VariableLabel, mk_Ms1FixedLabel, 1);
-                            */
 		if (mk_MassRangeFingerprintStream_)
 		{
 			mk_MassRangeFingerprintStream_->setRealNumberNotation(QTextStream::FixedNotation);
