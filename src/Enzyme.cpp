@@ -21,7 +21,7 @@ along with Chitinator.  If not, see <http://www.gnu.org/licenses/>.
 
 
 k_Enzyme::k_Enzyme(r_EnzymeParameters ar_EnzymeParameters)
-	: mr_EnzymeParameters(ar_EnzymeParameters)
+    : mr_EnzymeParameters(ar_EnzymeParameters)
 {
 }
 
@@ -33,13 +33,13 @@ k_Enzyme::~k_Enzyme()
 
 bool k_Enzyme::canCutPolymerAt(k_Polymer* ak_Polymer_, int ai_Position)
 {
-	// return false if cut is too far to the right
-	if (ai_Position + mr_EnzymeParameters.mi_Length > ak_Polymer_->getLength())
-		return false;
-	// extract subslice from polymer
-	unsigned int lui_Slice = ak_Polymer_->slice(ai_Position, mr_EnzymeParameters.mi_Length);
-	// apply enzyme mask
-	lui_Slice &= mr_EnzymeParameters.mui_Mask;
-	// check enzyme pattern
-	return lui_Slice == mr_EnzymeParameters.mui_Pattern;
+    // return false if cut is too far to the right
+    if (ai_Position + mr_EnzymeParameters.mi_Length > ak_Polymer_->getLength())
+        return false;
+    // extract subslice from polymer
+    unsigned int lui_Slice = ak_Polymer_->slice(ai_Position, mr_EnzymeParameters.mi_Length);
+    // apply enzyme mask
+    lui_Slice &= mr_EnzymeParameters.mui_Mask;
+    // check enzyme pattern
+    return lui_Slice == mr_EnzymeParameters.mui_Pattern;
 }

@@ -27,8 +27,8 @@ along with Chitinator.  If not, see <http://www.gnu.org/licenses/>.
 class k_Digestion
 {
 public:
-	k_Digestion();
-	virtual ~k_Digestion();
-	
-	virtual QList<RefPtr<k_Polymer> > digest(QList<RefPtr<k_Polymer> > ak_Polymers, k_Enzyme ak_Enzyme);
+    k_Digestion();
+    virtual ~k_Digestion();
+    
+    virtual QList<RefPtr<k_Polymer> > digest(QList<RefPtr<k_Polymer> > ak_Polymers, k_Enzyme ak_Enzyme);
 };
