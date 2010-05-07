@@ -20,7 +20,6 @@ along with SimQuant.  If not, see <http://www.gnu.org/licenses/>.
 #include <QtCore>
 #include <stdio.h>
 #include "ChitoScanner.h"
-#include "RefPtr.h"
 
 
 void printUsageAndExit()
@@ -132,14 +131,14 @@ int main(int ai_ArgumentCount, char** ac_Arguments__)
         QSet<r_LabelType::Enumeration>();
     QSet<r_LabelType::Enumeration> lk_Ms2FixedLabel = 
         QSet<r_LabelType::Enumeration>();
-    RefPtr<QIODevice> lk_pCompositionFingerprintDevice;
-    RefPtr<QTextStream> lk_pCompositionFingerprintStream;
-    RefPtr<QIODevice> lk_pMassRangeFingerprintDevice;
-    RefPtr<QTextStream> lk_pMassRangeFingerprintStream;
-    RefPtr<QIODevice> lk_pMassCollisionFingerprintDevice;
-    RefPtr<QTextStream> lk_pMassCollisionFingerprintStream;
-    RefPtr<QIODevice> lk_pMs2ProductsDevice;
-    RefPtr<QTextStream> lk_pMs2ProductsStream;
+    QSharedPointer<QIODevice> lk_pCompositionFingerprintDevice;
+    QSharedPointer<QTextStream> lk_pCompositionFingerprintStream;
+    QSharedPointer<QIODevice> lk_pMassRangeFingerprintDevice;
+    QSharedPointer<QTextStream> lk_pMassRangeFingerprintStream;
+    QSharedPointer<QIODevice> lk_pMassCollisionFingerprintDevice;
+    QSharedPointer<QTextStream> lk_pMassCollisionFingerprintStream;
+    QSharedPointer<QIODevice> lk_pMs2ProductsDevice;
+    QSharedPointer<QTextStream> lk_pMs2ProductsStream;
     
     // consume options
     int li_Index = 0;
@@ -306,9 +305,9 @@ int main(int ai_ArgumentCount, char** ac_Arguments__)
         QString ls_Path = QVariant(lk_Arguments[li_Index + 1]).toString();
         lk_Arguments.removeAt(li_Index);
         lk_Arguments.removeAt(li_Index);
-        lk_pCompositionFingerprintDevice = RefPtr<QIODevice>(new QFile(ls_Path));
+        lk_pCompositionFingerprintDevice = QSharedPointer<QIODevice>(new QFile(ls_Path));
         lk_pCompositionFingerprintDevice->open(QIODevice::WriteOnly);
-        lk_pCompositionFingerprintStream = RefPtr<QTextStream>(new QTextStream(lk_pCompositionFingerprintDevice.get_Pointer()));
+        lk_pCompositionFingerprintStream = QSharedPointer<QTextStream>(new QTextStream(lk_pCompositionFingerprintDevice.data()));
     }
     
     li_Index = lk_Arguments.indexOf("--writeMassRangeFingerprint");
@@ -317,9 +316,9 @@ int main(int ai_ArgumentCount, char** ac_Arguments__)
         QString ls_Path = QVariant(lk_Arguments[li_Index + 1]).toString();
         lk_Arguments.removeAt(li_Index);
         lk_Arguments.removeAt(li_Index);
-        lk_pMassRangeFingerprintDevice = RefPtr<QIODevice>(new QFile(ls_Path));
+        lk_pMassRangeFingerprintDevice = QSharedPointer<QIODevice>(new QFile(ls_Path));
         lk_pMassRangeFingerprintDevice->open(QIODevice::WriteOnly);
-        lk_pMassRangeFingerprintStream = RefPtr<QTextStream>(new QTextStream(lk_pMassRangeFingerprintDevice.get_Pointer()));
+        lk_pMassRangeFingerprintStream = QSharedPointer<QTextStream>(new QTextStream(lk_pMassRangeFingerprintDevice.data()));
     }
     
     li_Index = lk_Arguments.indexOf("--writeMassCollisionFingerprint");
@@ -328,9 +327,9 @@ int main(int ai_ArgumentCount, char** ac_Arguments__)
         QString ls_Path = QVariant(lk_Arguments[li_Index + 1]).toString();
         lk_Arguments.removeAt(li_Index);
         lk_Arguments.removeAt(li_Index);
-        lk_pMassCollisionFingerprintDevice = RefPtr<QIODevice>(new QFile(ls_Path));
+        lk_pMassCollisionFingerprintDevice = QSharedPointer<QIODevice>(new QFile(ls_Path));
         lk_pMassCollisionFingerprintDevice->open(QIODevice::WriteOnly);
-        lk_pMassCollisionFingerprintStream = RefPtr<QTextStream>(new QTextStream(lk_pMassCollisionFingerprintDevice.get_Pointer()));
+        lk_pMassCollisionFingerprintStream = QSharedPointer<QTextStream>(new QTextStream(lk_pMassCollisionFingerprintDevice.data()));
     }
     
     li_Index = lk_Arguments.indexOf("--writeMs2Products");
@@ -339,9 +338,9 @@ int main(int ai_ArgumentCount, char** ac_Arguments__)
         QString ls_Path = QVariant(lk_Arguments[li_Index + 1]).toString();
         lk_Arguments.removeAt(li_Index);
         lk_Arguments.removeAt(li_Index);
-        lk_pMs2ProductsDevice = RefPtr<QIODevice>(new QFile(ls_Path));
+        lk_pMs2ProductsDevice = QSharedPointer<QIODevice>(new QFile(ls_Path));
         lk_pMs2ProductsDevice->open(QIODevice::WriteOnly);
-        lk_pMs2ProductsStream = RefPtr<QTextStream>(new QTextStream(lk_pMs2ProductsDevice.get_Pointer()));
+        lk_pMs2ProductsStream = QSharedPointer<QTextStream>(new QTextStream(lk_pMs2ProductsDevice.data()));
     }
     
     QStringList lk_SpectraFiles;
@@ -358,10 +357,10 @@ int main(int ai_ArgumentCount, char** ac_Arguments__)
                                     lk_Ms1VariableLabel, lk_Ms1FixedLabel,
                                     ld_ProductMassAccuracy,
                                     lk_Ms2VariableLabel, lk_Ms2FixedLabel,
-                                    lk_pCompositionFingerprintStream.get_Pointer(),
-                                    lk_pMassRangeFingerprintStream.get_Pointer(),
-                                    lk_pMassCollisionFingerprintStream.get_Pointer(),
-                                    lk_pMs2ProductsStream.get_Pointer());
+                                    lk_pCompositionFingerprintStream.data(),
+                                    lk_pMassRangeFingerprintStream.data(),
+                                    lk_pMassCollisionFingerprintStream.data(),
+                                    lk_pMs2ProductsStream.data());
         
     lk_ChitoScanner.scan(lk_SpectraFiles);
 }

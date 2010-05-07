@@ -18,7 +18,6 @@ along with Chitinator.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 #include <QtCore>
-#include "RefPtr.h"
 #include "Digestion.h"
 #include "Enzyme.h"
 #include "Polymer.h"
@@ -69,8 +68,8 @@ int main(int ai_ArgumentCount, char** ac_Arguments__)
     QString ls_Enzyme = "A|D";
     int li_MaxIterations = -1;
     
-    RefPtr<QIODevice> lk_pCompositionFingerprintDevice;
-    RefPtr<QTextStream> lk_pCompositionFingerprintStream;
+    QSharedPointer<QIODevice> lk_pCompositionFingerprintDevice;
+    QSharedPointer<QTextStream> lk_pCompositionFingerprintStream;
     
     // consume options
     int li_Index = 0;
@@ -121,9 +120,9 @@ int main(int ai_ArgumentCount, char** ac_Arguments__)
         QString ls_Path = QVariant(lk_Arguments[li_Index + 1]).toString();
         lk_Arguments.removeAt(li_Index);
         lk_Arguments.removeAt(li_Index);
-        lk_pCompositionFingerprintDevice = RefPtr<QIODevice>(new QFile(ls_Path));
+        lk_pCompositionFingerprintDevice = QSharedPointer<QIODevice>(new QFile(ls_Path));
         lk_pCompositionFingerprintDevice->open(QIODevice::WriteOnly);
-        lk_pCompositionFingerprintStream = RefPtr<QTextStream>(new QTextStream(lk_pCompositionFingerprintDevice.get_Pointer()));
+        lk_pCompositionFingerprintStream = QSharedPointer<QTextStream>(new QTextStream(lk_pCompositionFingerprintDevice.data()));
     }
     
     srand(time(NULL));
@@ -169,13 +168,13 @@ int main(int ai_ArgumentCount, char** ac_Arguments__)
     for (int li_Run = 1; li_Run <= li_Runs; ++li_Run)
     {
         printf("\rDP %d, enzyme %s, DA %1.2f%%: %d...", li_DP, ls_Enzyme.toStdString().c_str(), lf_DA * 100.0, li_Run);
-        QList<RefPtr<k_Polymer> > lk_Polymers;
-        RefPtr<k_Polymer> lk_pPolymer(new k_Polymer(lr_PolymerParameters));
+        QList<QSharedPointer<k_Polymer> > lk_Polymers;
+        QSharedPointer<k_Polymer> lk_pPolymer(new k_Polymer(lr_PolymerParameters));
         lk_Polymers.push_back(lk_pPolymer);
         
         // simple, full digestion
-        QList<RefPtr<k_Polymer> > lk_DigestablePolymers = lk_Polymers;
-        QList<RefPtr<k_Polymer> > lk_Products;
+        QList<QSharedPointer<k_Polymer> > lk_DigestablePolymers = lk_Polymers;
+        QList<QSharedPointer<k_Polymer> > lk_Products;
         
         int li_IterationCount = 0;
         
@@ -187,11 +186,11 @@ int main(int ai_ArgumentCount, char** ac_Arguments__)
                     break;
             }
             ++li_IterationCount;
-            QList<RefPtr<k_Polymer> >::iterator lk_Iter = lk_DigestablePolymers.begin();
+            QList<QSharedPointer<k_Polymer> >::iterator lk_Iter = lk_DigestablePolymers.begin();
             bool lb_FoundSite = false;
             while (lk_Iter != lk_DigestablePolymers.end())
             {
-                RefPtr<k_Polymer> lk_pPolymer = *lk_Iter;
+                QSharedPointer<k_Polymer> lk_pPolymer = *lk_Iter;
                 QList<int> lk_Permutation;
                 for (int k = 0; k < lk_pPolymer->mi_Length; ++k)
                     lk_Permutation << k;
@@ -204,9 +203,9 @@ int main(int ai_ArgumentCount, char** ac_Arguments__)
                 }
                 foreach (int k, lk_Permutation)
                 {
-                    if (lk_Enzyme.canCutPolymerAt(lk_pPolymer.get_Pointer(), k))
+                    if (lk_Enzyme.canCutPolymerAt(lk_pPolymer.data(), k))
                     {
-                        QList<RefPtr<k_Polymer> > lk_Parts = lk_pPolymer->cleaveAt(lk_Enzyme.mr_EnzymeParameters.mi_Cut + k);
+                        QList<QSharedPointer<k_Polymer> > lk_Parts = lk_pPolymer->cleaveAt(lk_Enzyme.mr_EnzymeParameters.mi_Cut + k);
                         // chuck out the cleaved polymer out of lk_DigestablePolymers
                         lk_DigestablePolymers.erase(lk_Iter);
                         // add parts to lk_DigestablePolymers
@@ -237,9 +236,9 @@ int main(int ai_ArgumentCount, char** ac_Arguments__)
     }
     if (lk_pCompositionFingerprintStream)
     {
-        *(lk_pCompositionFingerprintStream.get_Pointer()) << "Amount,A,D\n";
+        *(lk_pCompositionFingerprintStream.data()) << "Amount,A,D\n";
         foreach (tk_IntPair lk_AD, mk_Fingerprint.keys())
-            *(lk_pCompositionFingerprintStream.get_Pointer()) << mk_Fingerprint[lk_AD] << "," << lk_AD.first << "," << lk_AD.second << "\n";
+            *(lk_pCompositionFingerprintStream.data()) << mk_Fingerprint[lk_AD] << "," << lk_AD.first << "," << lk_AD.second << "\n";
     }
     printf("\n");
 }

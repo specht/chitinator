@@ -19,7 +19,6 @@ along with Chitinator.  If not, see <http://www.gnu.org/licenses/>.
 
 #pragma once
 #include <QtCore>
-#include "RefPtr.h"
 
 
 #define A 0
@@ -56,7 +55,7 @@ public:
     double getMass();
     int getDCount();
     unsigned int slice(int ai_Position, int ai_Length);
-    QList<RefPtr<k_Polymer> > cleaveAt(int ai_Position);
+    QList<QSharedPointer<k_Polymer> > cleaveAt(int ai_Position);
     
     void setMonomer(int ai_Position, int ai_Flag);
     int getMonomer(int ai_Position);
@@ -65,5 +64,5 @@ public:
 
     int mi_Length;
     int mi_PolymerOffset;
-    RefPtr<unsigned int> mui_pPolymer;
+    QSharedPointer<unsigned int> mui_pPolymer;
 };

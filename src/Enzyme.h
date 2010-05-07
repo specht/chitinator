@@ -19,7 +19,6 @@ along with Chitinator.  If not, see <http://www.gnu.org/licenses/>.
 
 #pragma once
 #include <QtCore>
-#include "RefPtr.h"
 #include "Polymer.h"
 
 

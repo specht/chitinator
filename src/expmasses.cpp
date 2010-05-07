@@ -18,7 +18,6 @@ along with Chitinator.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 #include <QtCore>
-#include "RefPtr.h"
 #include "Digestion.h"
 #include "Enzyme.h"
 #include "Polymer.h"
@@ -57,17 +56,17 @@ int main(int ai_ArgumentCount, char** ac_Arguments__)
     printf("This is the Chitinator.\n");
     printf("Creating polymers... ");
     r_PolymerParameters lr_PolymerParameters(1000.0, 10.0, 0.64);
-    QList<RefPtr<k_Polymer> > lk_Polymers;
+    QList<QSharedPointer<k_Polymer> > lk_Polymers;
     for (int i = 0; i < 20000; ++i)
     {
-        RefPtr<k_Polymer> lk_pPolymer(new k_Polymer(lr_PolymerParameters));
+        QSharedPointer<k_Polymer> lk_pPolymer(new k_Polymer(lr_PolymerParameters));
         lk_Polymers.push_back(lk_pPolymer);
     }
     printf("done.\n");
     r_EnzymeParameters lr_EnzymeParameters(2, 3, 0, 1);
     k_Enzyme lk_Enzyme(lr_EnzymeParameters);
     k_Digestion lk_Digestion;
-    QList<RefPtr<k_Polymer> > lk_Digest = lk_Digestion.digest(lk_Polymers, lk_Enzyme);
+    QList<QSharedPointer<k_Polymer> > lk_Digest = lk_Digestion.digest(lk_Polymers, lk_Enzyme);
     printf("Digested %d polymers into %d products.\n", lk_Polymers.size(), lk_Digest.size());
     int li_MinLength = lk_Digest.first()->mi_Length;
     int li_MaxLength = li_MinLength;
