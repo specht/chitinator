@@ -30,24 +30,24 @@ k_Digestion::~k_Digestion()
 }
 
 
-QList<RefPtr<k_Polymer> > k_Digestion::digest(QList<RefPtr<k_Polymer> > ak_Polymers, k_Enzyme ak_Enzyme)
+QList<QSharedPointer<k_Polymer> > k_Digestion::digest(QList<QSharedPointer<k_Polymer> > ak_Polymers, k_Enzyme ak_Enzyme)
 {
-	QList<RefPtr<k_Polymer> > lk_Digest;
-	printf("Digesting... ");
-	for (int i = 0; i < ak_Polymers.size(); ++i)
-	{
-		RefPtr<k_Polymer> lk_pPolymer = ak_Polymers[i];
-		for (int k = 1; k < lk_pPolymer->getLength(); ++k)
-		{
-			if (ak_Enzyme.canCutPolymerAt(lk_pPolymer.get_Pointer(), k))
-			{
-				QList<RefPtr<k_Polymer> > lk_Parts = lk_pPolymer->cleaveAt(ak_Enzyme.mr_EnzymeParameters.mi_Cut + k);
-				lk_Digest.push_back(lk_Parts[0]);
-				lk_pPolymer = lk_Parts[1];
-			}
-		}
-		lk_Digest.push_back(lk_pPolymer);
-	}
-	printf("done.\n");
-	return lk_Digest;
+    QList<QSharedPointer<k_Polymer> > lk_Digest;
+    printf("Digesting... ");
+    for (int i = 0; i < ak_Polymers.size(); ++i)
+    {
+        QSharedPointer<k_Polymer> lk_pPolymer = ak_Polymers[i];
+        for (int k = 1; k < lk_pPolymer->getLength(); ++k)
+        {
+            if (ak_Enzyme.canCutPolymerAt(lk_pPolymer.data(), k))
+            {
+                QList<QSharedPointer<k_Polymer> > lk_Parts = lk_pPolymer->cleaveAt(ak_Enzyme.mr_EnzymeParameters.mi_Cut + k);
+                lk_Digest.push_back(lk_Parts[0]);
+                lk_pPolymer = lk_Parts[1];
+            }
+        }
+        lk_Digest.push_back(lk_pPolymer);
+    }
+    printf("done.\n");
+    return lk_Digest;
 }

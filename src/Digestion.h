@@ -19,7 +19,6 @@ along with Chitinator.  If not, see <http://www.gnu.org/licenses/>.
 
 #pragma once
 #include <QtCore>
-#include "RefPtr.h"
 #include "Polymer.h"
 #include "Enzyme.h"
 
@@ -27,8 +26,8 @@ along with Chitinator.  If not, see <http://www.gnu.org/licenses/>.
 class k_Digestion
 {
 public:
-	k_Digestion();
-	virtual ~k_Digestion();
-	
-	virtual QList<RefPtr<k_Polymer> > digest(QList<RefPtr<k_Polymer> > ak_Polymers, k_Enzyme ak_Enzyme);
+    k_Digestion();
+    virtual ~k_Digestion();
+    
+    virtual QList<QSharedPointer<k_Polymer> > digest(QList<QSharedPointer<k_Polymer> > ak_Polymers, k_Enzyme ak_Enzyme);
 };
