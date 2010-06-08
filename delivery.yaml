@@ -1,3 +1,4 @@
+# delivery configuration
 projects:
   - projects/chitinator
   - projects/chitoscan
