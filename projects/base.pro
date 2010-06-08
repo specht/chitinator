@@ -37,7 +37,3 @@ DESTDIR = ../../
 
 QT = core xml
 
-HEADERS += \
-    ../../src/RefPtr.h \
-
-SOURCES += \
