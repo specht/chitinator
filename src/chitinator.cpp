@@ -18,6 +18,7 @@ along with Chitinator.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 #include <QtCore>
+#include <time.h>
 #include "RefPtr.h"
 #include "Digestion.h"
 #include "Enzyme.h"
